@@ -707,6 +707,20 @@
     border-color 0.25s ease;
   text-align: left;
   position: relative;
+  z-index: 0;
+}
+
+.track-item::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 109, 155, 0.38), rgba(255, 195, 113, 0.26));
+  filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: -1;
 }
 
 .track-item::after {
@@ -732,8 +746,11 @@
 .track-item.active {
   background: linear-gradient(135deg, var(--accent-color) 0%, rgba(255, 255, 255, 0.12) 120%);
   border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 24px 36px rgba(255, 109, 155, 0.28);
   transform: translateY(-2px);
+}
+
+.track-item.active::before {
+  opacity: 1;
 }
 
 .track-thumb {

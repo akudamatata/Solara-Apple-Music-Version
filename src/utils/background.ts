@@ -1,4 +1,4 @@
-const CANVAS_SIZE = 720
+const CANVAS_SIZE = 1440
 const SAMPLE_SIZE = 40
 
 type RGB = [number, number, number]
@@ -126,18 +126,21 @@ export const generateAppleMusicStyleBackground = async (url: string): Promise<st
 
   const softenedBase = darken(base, 0.25)
   const accent = mix(highlight, base, 0.4)
+  const deepShadow = darken(shadow, 0.2)
 
   const radial = context.createRadialGradient(
     CANVAS_SIZE * 0.3,
     CANVAS_SIZE * 0.3,
-    CANVAS_SIZE * 0.15,
+    CANVAS_SIZE * 0.18,
     CANVAS_SIZE * 0.7,
     CANVAS_SIZE * 0.75,
-    CANVAS_SIZE,
+    CANVAS_SIZE * 0.95,
   )
-  radial.addColorStop(0, toColorString(lighten(highlight, 0.08), 0.92))
-  radial.addColorStop(0.45, toColorString(accent, 0.85))
-  radial.addColorStop(1, toColorString(softenedBase, 0.95))
+  radial.addColorStop(0, toColorString(lighten(highlight, 0.15), 0.95))
+  radial.addColorStop(0.22, toColorString(highlight, 0.9))
+  radial.addColorStop(0.48, toColorString(accent, 0.86))
+  radial.addColorStop(0.74, toColorString(softenedBase, 0.92))
+  radial.addColorStop(1, toColorString(deepShadow, 0.98))
 
   context.filter = 'blur(22px)'
   context.fillStyle = radial
@@ -146,15 +149,44 @@ export const generateAppleMusicStyleBackground = async (url: string): Promise<st
 
   const linear = context.createLinearGradient(0, CANVAS_SIZE * 0.2, CANVAS_SIZE, CANVAS_SIZE * 0.9)
   linear.addColorStop(0, toColorString(lighten(highlight, 0.22), 0.6))
-  linear.addColorStop(0.55, toColorString(base, 0.42))
-  linear.addColorStop(1, toColorString(darken(shadow, 0.1), 0.85))
+  linear.addColorStop(0.45, toColorString(base, 0.45))
+  linear.addColorStop(0.78, toColorString(mix(base, shadow, 0.5), 0.68))
+  linear.addColorStop(1, toColorString(deepShadow, 0.88))
 
   context.globalAlpha = 0.9
   context.fillStyle = linear
   context.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
   context.globalAlpha = 1
 
-  return canvas.toDataURL('image/jpeg', 0.88)
+  const noiseSize = 256
+  const noiseCanvas = document.createElement('canvas')
+  noiseCanvas.width = noiseSize
+  noiseCanvas.height = noiseSize
+  const noiseContext = noiseCanvas.getContext('2d')
+
+  if (noiseContext) {
+    const noiseData = noiseContext.createImageData(noiseSize, noiseSize)
+    const { data } = noiseData
+    for (let index = 0; index < data.length; index += 4) {
+      const value = Math.floor(Math.random() * 256)
+      data[index] = value
+      data[index + 1] = value
+      data[index + 2] = value
+      data[index + 3] = 255
+    }
+    noiseContext.putImageData(noiseData, 0, 0)
+
+    const pattern = context.createPattern(noiseCanvas, 'repeat')
+    if (pattern) {
+      context.save()
+      context.globalAlpha = 0.02
+      context.fillStyle = pattern
+      context.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+      context.restore()
+    }
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.9)
 }
 
 export default generateAppleMusicStyleBackground
