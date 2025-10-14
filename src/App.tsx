@@ -10,6 +10,11 @@ import { generateAppleMusicStyleBackground } from './utils/background'
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
 
+const getTrackKey = (track: { id: string | number; source?: string }) => {
+  const source = track.source || DEFAULT_SOURCE
+  return `${track.id}-${source}`
+}
+
 interface SearchResult {
   id: number | string
   name: string
@@ -164,7 +169,7 @@ function App() {
   const [activeLyricIndex, setActiveLyricIndex] = useState(0)
   const [activePanel, setActivePanel] = useState<'playlist' | 'lyrics'>('playlist')
   const [playlist, setPlaylist] = useState<TrackDetails[]>([])
-  const [activeIndex, setActiveIndex] = useState(-1)
+  const [currentTrackId, setCurrentTrackId] = useState<string | null>(null)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
   const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
   const [generatedBg, setGeneratedBg] = useState<string | null>(null)
@@ -179,10 +184,10 @@ function App() {
   }, [playlist])
 
   useEffect(() => {
-    activeIndexRef.current = activeIndex
-  }, [activeIndex])
+    activeIndexRef.current = playlist.findIndex((track) => getTrackKey(track) === currentTrackId)
+  }, [playlist, currentTrackId])
 
-  const trackCacheKey = currentTrack ? `${currentTrack.id}-${currentTrack.source}` : null
+  const trackCacheKey = currentTrack ? getTrackKey(currentTrack) : null
   const artworkUrl = currentTrack?.artworkUrl
 
   useEffect(() => {
@@ -403,7 +408,9 @@ function App() {
       setDuration(0)
       setActiveLyricIndex(0)
       setIsBuffering(true)
-      setActiveIndex(index)
+      const trackIdentifier = getTrackKey(details)
+      setCurrentTrackId(trackIdentifier)
+      activeIndexRef.current = index
 
       try {
         await activateTrack(details, shouldAutoplay, () => {
@@ -505,9 +512,8 @@ function App() {
         const details = await buildTrackDetails(track)
         let targetIndex = -1
         setPlaylist((prev) => {
-          const existingIndex = prev.findIndex(
-            (item) => item.id === details.id && item.source === details.source,
-          )
+          const targetKey = getTrackKey(details)
+          const existingIndex = prev.findIndex((item) => getTrackKey(item) === targetKey)
           const defaultInsertIndex = activeIndexRef.current >= 0 ? activeIndexRef.current + 1 : prev.length
           let insertIndex = Math.min(defaultInsertIndex, prev.length)
 
@@ -749,7 +755,7 @@ function App() {
                       <div className="search-status empty">没有找到相关歌曲</div>
                     )}
                     {searchResults.map((track) => {
-                      const trackKey = `${track.id}-${track.source}`
+                      const trackKey = getTrackKey(track)
                       const coverUrl = track.pic_id
                         ? `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
                         : ''
@@ -758,7 +764,7 @@ function App() {
                       return (
                         <button
                           type="button"
-                          key={`${track.id}-${track.source}`}
+                          key={trackKey}
                           className="search-result"
                           role="option"
                           onMouseDown={(event) => event.preventDefault()}
@@ -833,11 +839,12 @@ function App() {
                     <span className="result-count">{playlist.length} 首歌曲</span>
                   </div>
                   {playlist.map((track, index) => {
-                    const isActive = index === activeIndex
+                    const trackKey = getTrackKey(track)
+                    const isActive = trackKey === currentTrackId
                     return (
                       <button
                         type="button"
-                        key={`${track.id}-${track.source}`}
+                        key={trackKey}
                         role="option"
                         aria-selected={isActive}
                         className={`track-item${isActive ? ' active' : ''}`}
