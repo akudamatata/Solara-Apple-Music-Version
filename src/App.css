@@ -322,6 +322,17 @@
   opacity: 1;
 }
 
+.control-button.active {
+  color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.3);
+  filter: drop-shadow(0 0 6px var(--accent-color));
+}
+
+.control-button.active svg {
+  color: inherit;
+}
+
 .control-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
@@ -365,6 +376,83 @@
   border: 3px solid rgba(255, 255, 255, 0.45);
   border-top-color: #fff;
   animation: spin 0.8s linear infinite;
+}
+
+.bottom-right-buttons {
+  position: fixed;
+  bottom: 32px;
+  right: 48px;
+  display: flex;
+  gap: 16px;
+  opacity: 0.82;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 20;
+}
+
+.bottom-right-buttons:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+
+.quick-action-button {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 12, 34, 0.72);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 18px 36px rgba(5, 7, 18, 0.46);
+  backdrop-filter: blur(14px);
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease,
+    border-color 0.25s ease, opacity 0.25s ease;
+}
+
+.quick-action-button::before {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.quick-action-button svg {
+  width: 26px;
+  height: 26px;
+}
+
+.quick-action-button:hover {
+  transform: translateY(-3px) scale(1.03);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 26px 42px rgba(6, 8, 24, 0.6);
+}
+
+.quick-action-button:hover::before {
+  opacity: 1;
+}
+
+.quick-action-button.active {
+  color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.34);
+  filter: drop-shadow(0 0 8px var(--accent-color));
+}
+
+.quick-action-button.active svg {
+  color: inherit;
+}
+
+.quick-action-button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 4px;
 }
 
 .player-progress {
@@ -1207,6 +1295,11 @@ input[type='range']::-moz-range-track {
   .album-art {
     max-width: clamp(200px, 60vw, 420px);
   }
+
+  .bottom-right-buttons {
+    bottom: 24px;
+    right: 24px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1216,5 +1309,37 @@ input[type='range']::-moz-range-track {
 
   .segment {
     padding: 0.5rem 1.1rem;
+  }
+
+  .bottom-right-buttons {
+    bottom: 16px;
+    right: 16px;
+    gap: 12px;
+  }
+
+  .quick-action-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+  }
+
+  .quick-action-button svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .player-controls {
+    flex-wrap: wrap;
+    gap: clamp(0.8rem, 6vw, 1.4rem);
+  }
+
+  .player-controls .control-button {
+    width: 52px;
+    height: 52px;
+  }
+
+  .player-controls .play-toggle {
+    width: 64px;
+    height: 64px;
   }
 }
