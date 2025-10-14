@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { ListMusic, Mic2, Repeat, Repeat1, Shuffle } from 'lucide-react'
 import './App.css'
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
@@ -117,32 +118,6 @@ const VolumeIcon = () => (
   </svg>
 )
 
-const PlaylistIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      d="M4 6.5h12M4 11.5h12M4 16.5h6m10-6.17v6.84a1.5 1.5 0 01-2.36 1.2l-2.14-1.53"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
-
-const LyricsIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      d="M5 6.5h9m-9 4h9m-9 4h5M16 6v9.5a2 2 0 01-2 2h-2.5l-3.2 2.4a.6.6 0 01-.96-.48V17.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
-
 const LoadingSpinner = () => (
   <span className="spinner" aria-hidden="true" />
 )
@@ -174,6 +149,11 @@ function App() {
   const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
   const [generatedBg, setGeneratedBg] = useState<string | null>(null)
   const backgroundCacheRef = useRef<Record<string, string>>({})
+  const [isShuffle, setIsShuffle] = useState(false)
+  const [repeatMode, setRepeatMode] = useState<'none' | 'one' | 'all'>('none')
+  const shuffleHistoryRef = useRef<string[]>([])
+  const shuffleEnabledRef = useRef(isShuffle)
+  const repeatModeRef = useRef(repeatMode)
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
@@ -186,6 +166,17 @@ function App() {
   useEffect(() => {
     activeIndexRef.current = playlist.findIndex((track) => getTrackKey(track) === currentTrackId)
   }, [playlist, currentTrackId])
+
+  useEffect(() => {
+    shuffleEnabledRef.current = isShuffle
+    if (!isShuffle) {
+      shuffleHistoryRef.current = []
+    }
+  }, [isShuffle])
+
+  useEffect(() => {
+    repeatModeRef.current = repeatMode
+  }, [repeatMode])
 
   const trackCacheKey = currentTrack ? getTrackKey(currentTrack) : null
   const artworkUrl = currentTrack?.artworkUrl
@@ -415,11 +406,58 @@ function App() {
       try {
         await activateTrack(details, shouldAutoplay, () => {
           const list = playlistRef.current
-          const nextIndex = index + 1
-          if (nextIndex < list.length) {
-            const nextTrack = list[nextIndex]
+          const currentIndex = activeIndexRef.current
+          const repeatState = repeatModeRef.current
+          const shuffleOn = shuffleEnabledRef.current
+
+          if (repeatState === 'one') {
+            const repeatIndex = currentIndex >= 0 ? currentIndex : index
+            const repeatTrack = list[repeatIndex] ?? details
+            if (repeatTrack) {
+              playTrack(repeatTrack, repeatIndex >= 0 ? repeatIndex : index).catch(() => undefined)
+            }
+            return
+          }
+
+          let targetIndex: number | null = null
+
+          if (shuffleOn && list.length) {
+            const availableIndexes = list
+              .map((_, idx) => idx)
+              .filter((idx) => idx !== currentIndex)
+            if (availableIndexes.length) {
+              targetIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)]
+            } else if (repeatState === 'all' && currentIndex >= 0) {
+              targetIndex = currentIndex
+            }
+            if (
+              targetIndex !== null &&
+              currentIndex !== -1 &&
+              targetIndex >= 0 &&
+              targetIndex !== currentIndex
+            ) {
+              const currentTrack = list[currentIndex]
+              if (currentTrack) {
+                shuffleHistoryRef.current.push(getTrackKey(currentTrack))
+              }
+            }
+          } else if (list.length) {
+            const nextIndex = currentIndex + 1
+            if (nextIndex < list.length) {
+              targetIndex = nextIndex
+            } else if (repeatState === 'all') {
+              targetIndex = 0
+            }
+          }
+
+          if (targetIndex === null || targetIndex === undefined) {
+            return
+          }
+
+          if (targetIndex >= 0 && targetIndex < list.length) {
+            const nextTrack = list[targetIndex]
             if (nextTrack) {
-              playTrack(nextTrack, nextIndex).catch(() => undefined)
+              playTrack(nextTrack, targetIndex).catch(() => undefined)
             }
           }
         })
@@ -466,6 +504,18 @@ function App() {
     [generatedBg],
   )
 
+  const toggleShuffle = useCallback(() => {
+    setIsShuffle((prev) => {
+      const next = !prev
+      shuffleHistoryRef.current = []
+      return next
+    })
+  }, [])
+
+  const cycleRepeat = useCallback(() => {
+    setRepeatMode((prev) => (prev === 'none' ? 'all' : prev === 'all' ? 'one' : 'none'))
+  }, [])
+
   const handlePlayPause = useCallback(() => {
     const audio = audioRef.current
     if (!audio) {
@@ -496,6 +546,12 @@ function App() {
       const track = playlistRef.current[index]
       if (!track) {
         return
+      }
+      if (shuffleEnabledRef.current && activeIndexRef.current !== -1 && activeIndexRef.current !== index) {
+        const current = playlistRef.current[activeIndexRef.current]
+        if (current) {
+          shuffleHistoryRef.current.push(getTrackKey(current))
+        }
       }
       await playTrack(track, index)
     },
@@ -560,6 +616,23 @@ function App() {
     if (!list.length) {
       return
     }
+    if (shuffleEnabledRef.current) {
+      const history = shuffleHistoryRef.current
+      while (history.length) {
+        const previousKey = history.pop()
+        if (!previousKey) {
+          break
+        }
+        const previousIndex = list.findIndex((item) => getTrackKey(item) === previousKey)
+        if (previousIndex !== -1) {
+          const target = list[previousIndex]
+          if (target) {
+            playTrack(target, previousIndex).catch(() => undefined)
+            return
+          }
+        }
+      }
+    }
     const nextIndex = activeIndexRef.current > 0 ? activeIndexRef.current - 1 : list.length - 1
     const target = list[nextIndex]
     if (target) {
@@ -572,7 +645,32 @@ function App() {
     if (!list.length) {
       return
     }
-    const nextIndex = activeIndexRef.current + 1
+    const currentIndex = activeIndexRef.current
+    if (shuffleEnabledRef.current) {
+      if (currentIndex !== -1) {
+        const currentTrack = list[currentIndex]
+        if (currentTrack) {
+          shuffleHistoryRef.current.push(getTrackKey(currentTrack))
+        }
+      }
+      if (list.length === 1) {
+        const target = list[0]
+        playTrack(target, 0).catch(() => undefined)
+        return
+      }
+      const availableIndexes = list.map((_, index) => index).filter((index) => index !== currentIndex)
+      const nextIndex = availableIndexes.length
+        ? availableIndexes[Math.floor(Math.random() * availableIndexes.length)]
+        : currentIndex >= 0
+          ? currentIndex
+          : 0
+      const target = list[nextIndex]
+      if (target) {
+        playTrack(target, nextIndex).catch(() => undefined)
+      }
+      return
+    }
+    const nextIndex = currentIndex + 1
     if (nextIndex < list.length) {
       const target = list[nextIndex]
       if (target) {
@@ -632,6 +730,10 @@ function App() {
 
   const trimmedQuery = query.trim()
   const showSearchDropdown = trimmedQuery.length > 0
+  const RepeatIconComponent = repeatMode === 'one' ? Repeat1 : Repeat
+  const shuffleLabel = isShuffle ? '关闭随机播放' : '开启随机播放'
+  const repeatAriaLabel =
+    repeatMode === 'none' ? '开启循环播放' : repeatMode === 'all' ? '切换为单曲循环' : '关闭循环播放'
 
   return (
     <div className="app" style={backgroundStyle}>
@@ -685,7 +787,16 @@ function App() {
               </div>
             </div>
 
-            <div className="player-controls" role="group" aria-label="播放控制">
+            <div className="player-controls controls" role="group" aria-label="播放控制">
+              <button
+                type="button"
+                className={`control-button${isShuffle ? ' active' : ''}`}
+                onClick={toggleShuffle}
+                aria-pressed={isShuffle}
+                aria-label={shuffleLabel}
+              >
+                <Shuffle strokeWidth={1.6} />
+              </button>
               <button
                 type="button"
                 className="control-button"
@@ -712,6 +823,15 @@ function App() {
                 aria-label="下一首"
               >
                 <NextIcon />
+              </button>
+              <button
+                type="button"
+                className={`control-button${repeatMode !== 'none' ? ' active' : ''}`}
+                onClick={cycleRepeat}
+                aria-label={repeatAriaLabel}
+                aria-pressed={repeatMode !== 'none'}
+              >
+                <RepeatIconComponent strokeWidth={1.6} />
               </button>
             </div>
 
@@ -796,32 +916,6 @@ function App() {
                 )}
               </div>
 
-              <div className="segmented-control" role="tablist" aria-label="内容切换">
-                <button
-                  type="button"
-                  className={`segment${activePanel === 'playlist' ? ' active' : ''}`}
-                  onClick={() => setActivePanel('playlist')}
-                  role="tab"
-                  aria-selected={activePanel === 'playlist'}
-                  aria-controls="panel-playlist"
-                  id="tab-playlist"
-                >
-                  <PlaylistIcon />
-                  <span>播放列表</span>
-                </button>
-                <button
-                  type="button"
-                  className={`segment${activePanel === 'lyrics' ? ' active' : ''}`}
-                  onClick={() => setActivePanel('lyrics')}
-                  role="tab"
-                  aria-selected={activePanel === 'lyrics'}
-                  aria-controls="panel-lyrics"
-                  id="tab-lyrics"
-                >
-                  <LyricsIcon />
-                  <span>歌词</span>
-                </button>
-              </div>
             </header>
 
             {error && <div className="error-banner">{error}</div>}
@@ -891,6 +985,34 @@ function App() {
           </div>
         </aside>
       </main>
+      <div className="bottom-right-buttons" role="tablist" aria-label="内容切换">
+        <button
+          type="button"
+          id="tab-playlist"
+          role="tab"
+          className={`quick-action-button${activePanel === 'playlist' ? ' active' : ''}`}
+          onClick={() => setActivePanel('playlist')}
+          aria-selected={activePanel === 'playlist'}
+          aria-controls="panel-playlist"
+          title="播放列表"
+        >
+          <ListMusic strokeWidth={1.6} aria-hidden="true" />
+          <span className="sr-only">显示播放列表</span>
+        </button>
+        <button
+          type="button"
+          id="tab-lyrics"
+          role="tab"
+          className={`quick-action-button${activePanel === 'lyrics' ? ' active' : ''}`}
+          onClick={() => setActivePanel('lyrics')}
+          aria-selected={activePanel === 'lyrics'}
+          aria-controls="panel-lyrics"
+          title="歌词"
+        >
+          <Mic2 strokeWidth={1.6} aria-hidden="true" />
+          <span className="sr-only">显示歌词</span>
+        </button>
+      </div>
     </div>
   )
 }
