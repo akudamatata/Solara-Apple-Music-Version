@@ -32,7 +32,6 @@
   --panel-border: rgba(255, 255, 255, 0.08);
   --text-muted: rgba(255, 255, 255, 0.72);
   --divider-color: rgba(255, 255, 255, 0.08);
-  --artwork-url: none;
 }
 
 .sr-only {
@@ -50,16 +49,16 @@
 .app-backdrop {
   position: absolute;
   inset: -12%;
-  background: var(
-    --artwork-url,
-    radial-gradient(circle at 25% 25%, rgba(120, 96, 255, 0.28), rgba(7, 6, 20, 0.92))
+  background: radial-gradient(
+    circle at 25% 25%,
+    var(--bg-color-1, rgba(120, 96, 255, 0.28)),
+    rgba(7, 6, 20, 0.92)
   );
   background-size: cover;
   background-position: center;
-  filter: blur(110px);
   transform: scale(1.18);
   opacity: 0.68;
-  transition: background 1.4s ease, opacity 0.8s ease;
+  transition: background-image 0.8s ease, opacity 0.8s ease;
   animation: artworkPan 36s ease-in-out infinite alternate;
   pointer-events: none;
   z-index: 0;
