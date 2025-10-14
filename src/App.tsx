@@ -464,11 +464,7 @@ function App() {
       <div className="app-content">
         <section className="now-playing">
           <header className="now-playing-header">
-            <span className="badge">Solara Music</span>
-            <div className="now-playing-title">
-              <h1>沉浸式播放室</h1>
-              <p className="subtitle">高仿 Apple Music · Cloudflare Pages 就绪</p>
-            </div>
+            <h1 className="brand-title">Solara Music</h1>
           </header>
 
           <div className="artwork-stage" aria-live="polite">
