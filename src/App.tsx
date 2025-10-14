@@ -8,7 +8,6 @@ import type { BackgroundPalette } from './utils/palette'
 
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
-const DEFAULT_QUERY = 'Taylor Swift'
 
 interface SearchResult {
   id: number | string
@@ -143,7 +142,7 @@ const LoadingSpinner = () => (
 )
 
 function App() {
-  const [query, setQuery] = useState(DEFAULT_QUERY)
+  const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<TrackDetails | null>(null)
