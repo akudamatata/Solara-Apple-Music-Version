@@ -135,12 +135,14 @@
   z-index: 3;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  gap: clamp(2.6rem, 5vw, 3.6rem);
-  padding: clamp(2.8rem, 5vw, 3.8rem);
+  gap: clamp(2.4rem, 4.6vw, 3.4rem);
+  --layout-padding: clamp(2.2rem, 4.8vw, 3.4rem);
+  padding: var(--layout-padding);
   height: 100%;
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
+  --panel-padding: clamp(2rem, 4vw, 3rem);
 }
 
 .panel {
@@ -149,12 +151,7 @@
   min-height: 0;
   position: relative;
   overflow: hidden;
-}
-
-.playback-panel,
-.list-panel {
-  padding: clamp(2.3rem, 4vw, 3rem);
-  overflow: hidden;
+  padding: var(--panel-padding);
 }
 
 .playback-panel {
@@ -164,14 +161,20 @@
 
 .playback-stack {
   display: grid;
-  grid-auto-rows: max-content;
+  grid-template-rows: auto minmax(0, 1fr) repeat(4, auto);
+  grid-auto-rows: auto;
   justify-items: center;
-  align-content: space-between;
-  gap: clamp(1.4rem, 2.6vw, 2.2rem);
+  align-content: center;
+  gap: clamp(1rem, 2.4vh, 2rem);
   min-height: 0;
   height: 100%;
-  width: min(100%, 600px);
+  max-height: min(
+    100%,
+    max(0px, calc(100dvh - (var(--layout-padding) * 2) - (var(--panel-padding) * 2)))
+  );
+  width: min(100%, 560px);
   margin: 0 auto;
+  padding-block: clamp(1.2rem, 3vh, 2.8rem);
 }
 
 .brand-bar {
@@ -200,8 +203,13 @@
 }
 
 .artwork-wrapper {
-  width: min(36vw, 520px, 60vh);
+  width: min(48vh, clamp(240px, 32vw, 460px));
+  max-width: 100%;
+  max-height: min(48vh, clamp(240px, 32vw, 460px));
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .artwork {
@@ -281,6 +289,7 @@
   gap: 1.1rem;
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.72);
+  width: min(100%, 520px);
 }
 
 .timeline span {
@@ -293,6 +302,7 @@
   align-items: center;
   justify-content: center;
   gap: clamp(1.1rem, 2.6vw, 1.8rem);
+  width: min(100%, 520px);
 }
 
 .control-button {
@@ -561,7 +571,7 @@
   flex-direction: column;
   gap: 0.8rem;
   overflow-y: auto;
-  padding-right: 0.4rem;
+  padding-right: clamp(0.45rem, 1vw, 0.9rem);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
 }
@@ -709,26 +719,25 @@
 .track-title {
   font-weight: 600;
   font-size: 1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .track-artist {
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.72);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .track-album {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.6);
   max-width: clamp(120px, 16vw, 180px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: right;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .empty-state {
@@ -778,6 +787,88 @@
 .lyrics-scroll::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.24);
   border-radius: 999px;
+}
+
+@media (max-height: 860px) {
+  .app-layout {
+    --layout-padding: clamp(1.8rem, 4vh, 2.6rem);
+    padding: var(--layout-padding);
+    gap: clamp(1.8rem, 4vw, 2.6rem);
+    --panel-padding: clamp(1.6rem, 3.6vw, 2.4rem);
+  }
+
+  .playback-stack {
+    gap: clamp(0.8rem, 2vh, 1.4rem);
+    padding-block: clamp(0.8rem, 2vh, 1.8rem);
+  }
+
+  .artwork-wrapper {
+    width: min(44vh, clamp(220px, 30vw, 400px));
+    max-height: min(44vh, clamp(220px, 30vw, 400px));
+  }
+
+  .brand-title {
+    font-size: clamp(1.8rem, 3.6vw, 2.3rem);
+  }
+
+  .play-toggle {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+@media (max-height: 720px) {
+  .app-layout {
+    --layout-padding: clamp(1.4rem, 3.6vh, 2.2rem);
+    padding: var(--layout-padding);
+    gap: clamp(1.4rem, 4vw, 2rem);
+    --panel-padding: clamp(1.2rem, 3.2vw, 2rem);
+  }
+
+  .brand-bar {
+    gap: 0.4rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .playback-info h2 {
+    font-size: clamp(1.6rem, 3.6vw, 2rem);
+  }
+
+  .playback-info p {
+    font-size: 0.9rem;
+  }
+
+  .playback-stack {
+    gap: clamp(0.7rem, 1.6vh, 1.1rem);
+    padding-block: clamp(0.6rem, 1.6vh, 1.2rem);
+  }
+
+  .artwork-wrapper {
+    width: min(40vh, clamp(200px, 28vw, 340px));
+    max-height: min(40vh, clamp(200px, 28vw, 340px));
+  }
+
+  .timeline {
+    gap: 0.9rem;
+    font-size: 0.85rem;
+  }
+
+  .control-button {
+    width: 46px;
+    height: 46px;
+  }
+
+  .play-toggle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .volume-row {
+    gap: 0.8rem;
+  }
 }
 
 .lyric-line {
@@ -979,7 +1070,8 @@ input[type='range']::-moz-range-track {
 @media (max-width: 1100px) {
   .app-layout {
     gap: clamp(2rem, 4vw, 3rem);
-    padding: clamp(2.5rem, 5vw, 3.25rem);
+    --layout-padding: clamp(2.5rem, 5vw, 3.25rem);
+    padding: var(--layout-padding);
   }
 }
 
