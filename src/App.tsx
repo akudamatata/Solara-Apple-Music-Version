@@ -460,14 +460,26 @@ function App() {
           const existingIndex = prev.findIndex(
             (item) => item.id === details.id && item.source === details.source,
           )
+          const defaultInsertIndex = activeIndexRef.current >= 0 ? activeIndexRef.current + 1 : prev.length
+          let insertIndex = Math.min(defaultInsertIndex, prev.length)
+
           if (existingIndex !== -1) {
-            targetIndex = existingIndex
             const nextList = [...prev]
             nextList[existingIndex] = details
+            const [updatedTrack] = nextList.splice(existingIndex, 1)
+            if (existingIndex < insertIndex) {
+              insertIndex = Math.max(insertIndex - 1, 0)
+            }
+            insertIndex = Math.min(insertIndex, nextList.length)
+            nextList.splice(insertIndex, 0, updatedTrack)
+            targetIndex = insertIndex
             return nextList
           }
-          targetIndex = prev.length
-          return [...prev, details]
+
+          const nextList = [...prev]
+          nextList.splice(insertIndex, 0, details)
+          targetIndex = insertIndex
+          return nextList
         })
 
         if (targetIndex === -1) {
