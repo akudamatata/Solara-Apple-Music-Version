@@ -5,8 +5,7 @@
   width: 100%;
   overflow: hidden;
   color: #fff;
-  font-family: 'SF Pro Display', 'SF Pro Text', 'SF Pro Rounded', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
   font-feature-settings: 'liga', 'kern';
   background-color: #05060c;
   background: radial-gradient(circle at 20% 20%, var(--bg-color-1, rgba(118, 96, 255, 0.72)),
@@ -154,38 +153,30 @@
   padding: var(--panel-padding);
 }
 
-
 .playback-panel {
-  justify-content: center;
+  align-items: stretch;
+  gap: clamp(2rem, 4vh, 3rem);
 }
 
-.player-column {
+.player-stage {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
-  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1.6rem, 4vh, 2.6rem);
   width: min(100%, 560px);
   margin: 0 auto;
-  padding-block: clamp(1.6rem, 3vh, 2.6rem);
-  gap: clamp(2rem, 4vh, 2.8rem);
+  padding-block: clamp(1.8rem, 4vh, 3rem);
+  box-sizing: border-box;
 }
 
-.player-upper,
-.player-lower {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: clamp(1.2rem, 3vh, 1.8rem);
-}
-
-.player-upper {
-  flex: 1;
-  justify-content: flex-start;
+.player-stage > * {
+  width: 100%;
 }
 
 .player-header {
-  padding-top: 2rem;
+  padding-top: clamp(1.4rem, 3vh, 2rem);
   text-align: left;
 }
 
@@ -254,9 +245,8 @@
 
 
 .player-track-meta {
-  margin-top: 1rem;
+  margin: 0;
   text-align: left;
-  padding-left: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -412,6 +402,7 @@
 .player-progress {
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 .player-volume {
@@ -423,7 +414,7 @@
   max-width: 560px;
   margin: 0 auto;
   color: rgba(255, 255, 255, 0.7);
-  padding-bottom: 1rem;
+  padding-bottom: clamp(0.6rem, 2vh, 1rem);
 }
 
 .player-volume svg {
@@ -460,6 +451,11 @@
   flex-direction: column;
   gap: 1.4rem;
   flex-shrink: 0;
+  position: relative;
+}
+
+.search-area {
+  position: relative;
 }
 
 .search-bar {
@@ -502,6 +498,95 @@
 
 .search-bar.searching {
   border-color: rgba(255, 255, 255, 0.28);
+}
+
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.4rem 0;
+  border-radius: 22px;
+  background: rgba(14, 12, 34, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 32px 64px rgba(6, 8, 26, 0.45);
+  backdrop-filter: blur(18px);
+  max-height: clamp(240px, 45vh, 420px);
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.search-result {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.65rem 1.2rem;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.search-result:hover,
+.search-result:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.search-result-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.search-result-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.search-result-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.search-result-title {
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-artist {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-status {
+  padding: 0.8rem 1.2rem;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.search-status.empty {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .spinner {
@@ -658,6 +743,13 @@
   color: rgba(255, 255, 255, 0.85);
   overflow: hidden;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.track-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .track-letter {
