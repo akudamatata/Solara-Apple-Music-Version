@@ -109,6 +109,32 @@ const VolumeIcon = () => (
   </svg>
 )
 
+const PlaylistIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      d="M4 6.5h12M4 11.5h12M4 16.5h6m10-6.17v6.84a1.5 1.5 0 01-2.36 1.2l-2.14-1.53"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+const LyricsIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      d="M5 6.5h9m-9 4h9m-9 4h5M16 6v9.5a2 2 0 01-2 2h-2.5l-3.2 2.4a.6.6 0 01-.96-.48V17.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
 const LoadingSpinner = () => (
   <span className="spinner" aria-hidden="true" />
 )
@@ -134,6 +160,7 @@ function App() {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.8)
   const [activeLyricIndex, setActiveLyricIndex] = useState(0)
+  const [activePanel, setActivePanel] = useState<'playlist' | 'lyrics'>('playlist')
 
   useEffect(() => {
     searchResultsRef.current = searchResults
@@ -435,190 +462,221 @@ function App() {
       <div className="app-backdrop" />
       <div className="app-overlay" />
       <div className="app-content">
-        <aside className="sidebar">
-          <header className="sidebar-header">
+        <section className="now-playing">
+          <header className="now-playing-header">
             <span className="badge">Solara Music</span>
-            <h1>沉浸式播放室</h1>
-            <p className="subtitle">高仿 Apple Music · Cloudflare Pages 就绪</p>
+            <div className="now-playing-title">
+              <h1>沉浸式播放室</h1>
+              <p className="subtitle">高仿 Apple Music · Cloudflare Pages 就绪</p>
+            </div>
           </header>
 
-          <div className={`search-bar${isSearching ? ' searching' : ''}`}>
-            <SearchIcon />
-            <input
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value)
-              }}
-              placeholder="搜索艺术家、歌曲或专辑"
-              spellCheck={false}
-            />
-            {isSearching && <LoadingSpinner />}
+          <div className="artwork-stage" aria-live="polite">
+            <div
+              className={`artwork-frame${currentTrack?.artworkUrl ? ' loaded' : ''}`}
+              style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
+            >
+              {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
+            </div>
           </div>
 
-          {error && <div className="error-banner">{error}</div>}
-
-          <div className="results-header">
-            <span>搜索结果</span>
-            <span className="result-count">{searchResults.length} 首歌曲</span>
-          </div>
-
-          <div className="search-results" role="listbox">
-            {searchResults.map((track, index) => {
-              const isActive = index === selectedIndex
-              return (
-                <button
-                  type="button"
-                  key={`${track.id}-${track.source}`}
-                  role="option"
-                  aria-selected={isActive}
-                  className={`search-item${isActive ? ' active' : ''}`}
-                  onClick={() => handleSelect(index)}
-                >
-                  <div className="search-item-artwork" aria-hidden="true">
-                    {isActive && (
-                      <span className="equalizer" aria-hidden="true">
-                        <span />
-                      </span>
-                    )}
-                  </div>
-                  <div className="search-item-meta">
-                    <span className="title">{track.name}</span>
-                    <span className="artist">{track.artist.join('、')}</span>
-                  </div>
-                  <span className="album" title={track.album}>
-                    {track.album}
-                  </span>
-                </button>
-              )
-            })}
-            {!searchResults.length && !isSearching && (
-              <div className="empty-state">没有找到相关歌曲</div>
+          <div className="track-meta">
+            <span className="label">{currentTrack ? '正在播放' : '等待播放'}</span>
+            <h2>{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
+            {currentTrack ? (
+              <p className="track-details">{currentTrack.artists} · {currentTrack.album}</p>
+            ) : (
+              <p className="track-details">即时搜索 · 立刻播放</p>
             )}
           </div>
 
-          {currentTrack && (
-            <div className="now-playing-card">
-              <div
-                className="now-playing-artwork"
-                style={{ backgroundImage: currentTrack.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
-                aria-label={currentTrack.title}
-              />
-              <div className="now-playing-meta">
-                <span className="label">正在播放</span>
-                <h2>{currentTrack.title}</h2>
-                <p>{currentTrack.artists}</p>
-                <span className="album-chip">{currentTrack.album}</span>
-              </div>
-            </div>
-          )}
+          <div className="timeline">
+            <span>{formatTime(progress)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              value={Math.min(progress, duration || 0)}
+              step={0.1}
+              onChange={(event) => handleSeek(Number(event.target.value))}
+              aria-label="播放进度"
+            />
+            <span>{formatTime(duration)}</span>
+          </div>
 
-          <div className="player">
-            <div className="timeline">
-              <span>{formatTime(progress)}</span>
+          <div className="player-controls">
+            <button
+              type="button"
+              className="control"
+              onClick={() => {
+                if (!searchResults.length) {
+                  return
+                }
+                autoplayRef.current = true
+                setSelectedIndex((prev) => {
+                  if (prev <= 0) {
+                    return Math.max(searchResults.length - 1, 0)
+                  }
+                  return prev - 1
+                })
+              }}
+              disabled={!searchResults.length}
+              aria-label="上一首"
+            >
+              <PrevIcon />
+            </button>
+
+            <button
+              type="button"
+              className={`play-pause${isBuffering ? ' buffering' : ''}`}
+              onClick={handlePlayPause}
+              disabled={!currentTrack || isLoadingTrack}
+              aria-label={isPlaying ? '暂停' : '播放'}
+            >
+              {isPlaying ? <PauseIcon /> : <PlayIcon />}
+            </button>
+
+            <button
+              type="button"
+              className="control"
+              onClick={() => {
+                if (!searchResults.length) {
+                  return
+                }
+                autoplayRef.current = true
+                setSelectedIndex((prev) => {
+                  if (prev < 0) {
+                    return 0
+                  }
+                  const next = prev + 1
+                  if (next < searchResults.length) {
+                    return next
+                  }
+                  return 0
+                })
+              }}
+              disabled={!searchResults.length}
+              aria-label="下一首"
+            >
+              <NextIcon />
+            </button>
+          </div>
+
+          <div className="player-extra">
+            <div className="volume">
+              <VolumeIcon />
               <input
                 type="range"
                 min={0}
-                max={duration || 0}
-                value={Math.min(progress, duration || 0)}
-                step={0.1}
-                onChange={(event) => handleSeek(Number(event.target.value))}
-                aria-label="播放进度"
+                max={1}
+                step={0.01}
+                value={volume}
+                onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                aria-label="音量"
               />
-              <span>{formatTime(duration)}</span>
             </div>
+            {currentTrack && <span className="source-chip">来自 {currentTrack.source}</span>}
+          </div>
+        </section>
 
-            <div className="player-controls">
-              <button
-                type="button"
-                className="control"
-                onClick={() => {
-                  if (!searchResults.length) {
-                    return
-                  }
-                  autoplayRef.current = true
-                  setSelectedIndex((prev) => {
-                    if (prev <= 0) {
-                      return Math.max(searchResults.length - 1, 0)
-                    }
-                    return prev - 1
-                  })
-                }}
-                disabled={!searchResults.length}
-                aria-label="上一首"
-              >
-                <PrevIcon />
-              </button>
-
-              <button
-                type="button"
-                className={`play-pause${isBuffering ? ' buffering' : ''}`}
-                onClick={handlePlayPause}
-                disabled={!currentTrack || isLoadingTrack}
-                aria-label={isPlaying ? '暂停' : '播放'}
-              >
-                {isPlaying ? <PauseIcon /> : <PlayIcon />}
-              </button>
-
-              <button
-                type="button"
-                className="control"
-                onClick={() => {
-                  if (!searchResults.length) {
-                    return
-                  }
-                  autoplayRef.current = true
-                  setSelectedIndex((prev) => {
-                    if (prev < 0) {
-                      return 0
-                    }
-                    const next = prev + 1
-                    if (next < searchResults.length) {
-                      return next
-                    }
-                    return 0
-                  })
-                }}
-                disabled={!searchResults.length}
-                aria-label="下一首"
-              >
-                <NextIcon />
-              </button>
-            </div>
-
-            <div className="player-extra">
-              <div className="volume">
-                <VolumeIcon />
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={volume}
-                  onChange={(event) => handleVolumeChange(Number(event.target.value))}
-                  aria-label="音量"
-                />
-              </div>
-              {currentTrack && <span className="source-chip">来自 {currentTrack.source}</span>}
-            </div>
+        <aside className={`context-panel ${activePanel}`}>
+          <div className="panel-surface">
+            {activePanel === 'playlist' ? (
+              <>
+                <header className="panel-header">
+                  <div className={`search-bar${isSearching ? ' searching' : ''}`}>
+                    <SearchIcon />
+                    <input
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value)
+                      }}
+                      placeholder="搜索艺术家、歌曲或专辑"
+                      spellCheck={false}
+                    />
+                    {isSearching && <LoadingSpinner />}
+                  </div>
+                  {error && <div className="error-banner">{error}</div>}
+                  <div className="results-header">
+                    <span>搜索结果</span>
+                    <span className="result-count">{searchResults.length} 首歌曲</span>
+                  </div>
+                </header>
+                <div className="panel-body" role="listbox">
+                  {searchResults.map((track, index) => {
+                    const isActive = index === selectedIndex
+                    return (
+                      <button
+                        type="button"
+                        key={`${track.id}-${track.source}`}
+                        role="option"
+                        aria-selected={isActive}
+                        className={`search-item${isActive ? ' active' : ''}`}
+                        onClick={() => handleSelect(index)}
+                      >
+                        <div className="search-item-artwork" aria-hidden="true">
+                          {isActive && (
+                            <span className="equalizer" aria-hidden="true">
+                              <span />
+                            </span>
+                          )}
+                        </div>
+                        <div className="search-item-meta">
+                          <span className="title">{track.name}</span>
+                          <span className="artist">{track.artist.join('、')}</span>
+                        </div>
+                        <span className="album" title={track.album}>
+                          {track.album}
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {!searchResults.length && !isSearching && (
+                    <div className="empty-state">没有找到相关歌曲</div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <header className="panel-header lyrics">
+                  <div>
+                    <span className="label">歌词</span>
+                    <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
+                    {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
+                  </div>
+                  {upcomingTrack && (
+                    <div className="up-next">
+                      <span>接下来</span>
+                      <p>{upcomingTrack}</p>
+                    </div>
+                  )}
+                </header>
+                <div className="panel-body lyrics-scroll">{lyricsContent}</div>
+              </>
+            )}
           </div>
         </aside>
 
-        <section className="lyrics-panel">
-          <header className="lyrics-header">
-            <div>
-              <span className="label">歌词</span>
-              <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
-              {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
-            </div>
-            {upcomingTrack && (
-              <div className="up-next">
-                <span>接下来</span>
-                <p>{upcomingTrack}</p>
-              </div>
-            )}
-          </header>
-          <div className="lyrics-scroll">{lyricsContent}</div>
-        </section>
+        <div className="corner-controls" role="group" aria-label="显示区域切换">
+          <button
+            type="button"
+            className={`corner-button${activePanel === 'playlist' ? ' active' : ''}`}
+            onClick={() => setActivePanel('playlist')}
+            aria-pressed={activePanel === 'playlist'}
+          >
+            <PlaylistIcon />
+            <span>播放列表</span>
+          </button>
+          <button
+            type="button"
+            className={`corner-button${activePanel === 'lyrics' ? ' active' : ''}`}
+            onClick={() => setActivePanel('lyrics')}
+            aria-pressed={activePanel === 'lyrics'}
+          >
+            <LyricsIcon />
+            <span>歌词</span>
+          </button>
+        </div>
       </div>
     </div>
   )
