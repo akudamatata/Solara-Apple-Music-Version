@@ -8,7 +8,6 @@ import type { BackgroundPalette } from './utils/palette'
 
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
-const DEFAULT_QUERY = 'Taylor Swift'
 
 interface SearchResult {
   id: number | string
@@ -143,7 +142,7 @@ const LoadingSpinner = () => (
 )
 
 function App() {
-  const [query, setQuery] = useState(DEFAULT_QUERY)
+  const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<TrackDetails | null>(null)
@@ -166,6 +165,7 @@ function App() {
   const [playlist, setPlaylist] = useState<TrackDetails[]>([])
   const [activeIndex, setActiveIndex] = useState(-1)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
+  const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
@@ -705,7 +705,12 @@ function App() {
                       <div className="search-status empty">没有找到相关歌曲</div>
                     )}
                     {searchResults.map((track) => {
-                      const coverUrl = `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
+                      const trackKey = `${track.id}-${track.source}`
+                      const coverUrl = track.pic_id
+                        ? `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
+                        : ''
+                      const fallbackLetter = track.name?.trim()?.[0]?.toUpperCase() || '?'
+                      const shouldShowFallback = !coverUrl || failedCoverMap[trackKey]
                       return (
                         <button
                           type="button"
@@ -716,7 +721,19 @@ function App() {
                           onClick={() => handleSearchSelect(track)}
                         >
                           <span className="search-result-thumb" aria-hidden="true">
-                            <img src={coverUrl} alt="" loading="lazy" />
+                            {shouldShowFallback ? (
+                              <div className="cover-fallback">{fallbackLetter}</div>
+                            ) : (
+                              <img
+                                src={coverUrl}
+                                alt={track.name}
+                                className="cover-image"
+                                loading="lazy"
+                                onError={() => {
+                                  setFailedCoverMap((prev) => ({ ...prev, [trackKey]: true }))
+                                }}
+                              />
+                            )}
                           </span>
                           <span className="search-result-meta">
                             <span className="search-result-title">{track.name}</span>
