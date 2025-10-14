@@ -59,65 +59,8 @@
   transform: scale(1.18);
   opacity: 0.68;
   transition: background-image 0.8s ease, opacity 0.8s ease;
-  animation: artworkPan 36s ease-in-out infinite alternate;
   pointer-events: none;
   z-index: 0;
-}
-
-.app-backdrop::before,
-.app-backdrop::after {
-  content: '';
-  position: absolute;
-  inset: -20%;
-  border-radius: 50%;
-  filter: blur(140px);
-  opacity: 0.85;
-  transform: translate3d(0, 0, 0);
-  transition: background 1.2s ease, opacity 0.8s ease;
-  pointer-events: none;
-}
-
-.app-backdrop::before {
-  background: radial-gradient(circle at 20% 30%, var(--bg-color-1), transparent 68%);
-  animation: gradientDrift 32s ease-in-out infinite;
-}
-
-.app-backdrop::after {
-  background: radial-gradient(circle at 80% 40%, var(--bg-color-3), transparent 65%);
-  animation: gradientDriftReverse 28s ease-in-out infinite;
-  mix-blend-mode: screen;
-}
-
-.app-ambient {
-  position: absolute;
-  inset: -25%;
-  pointer-events: none;
-  filter: blur(120px);
-  mix-blend-mode: screen;
-  z-index: 1;
-}
-
-.ambient-layer {
-  position: absolute;
-  width: 70%;
-  height: 70%;
-  border-radius: 50%;
-  opacity: 0.4;
-  transform-origin: center;
-  background: radial-gradient(circle, var(--bg-color-1) 0%, transparent 70%);
-  animation: ambientPulse 22s ease-in-out infinite;
-}
-
-.ambient-layer.layer-1 {
-  top: 6%;
-  left: 2%;
-}
-
-.ambient-layer.layer-2 {
-  bottom: 6%;
-  right: 0;
-  background: radial-gradient(circle, var(--bg-color-3) 0%, transparent 70%);
-  animation: ambientPulseReverse 26s ease-in-out infinite;
 }
 
 .app-overlay {
@@ -130,11 +73,10 @@
     rgba(16, 10, 32, 0.68) 58%,
     rgba(40, 14, 44, 0.55) 100%
   );
-  backdrop-filter: saturate(140%) blur(14px);
+  backdrop-filter: saturate(140%);
   mix-blend-mode: normal;
   z-index: 2;
   transition: background 1.2s ease;
-  animation: overlayPulse 18s ease-in-out infinite alternate;
 }
 
 .app-layout {

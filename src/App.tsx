@@ -5,6 +5,7 @@ import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
 import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
 import type { BackgroundPalette } from './utils/palette'
+import { generateAppleMusicStyleBackground } from './utils/background'
 
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
@@ -166,8 +167,8 @@ function App() {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
   const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
-  const [blurredBg, setBlurredBg] = useState<string | null>(null)
-  const blurCacheRef = useRef<Record<string, string>>({})
+  const [generatedBg, setGeneratedBg] = useState<string | null>(null)
+  const backgroundCacheRef = useRef<Record<string, string>>({})
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
@@ -213,54 +214,32 @@ function App() {
 
   useEffect(() => {
     if (!artworkUrl || !trackCacheKey) {
-      setBlurredBg(null)
+      setGeneratedBg(null)
       return
     }
 
-    const cached = blurCacheRef.current[trackCacheKey]
+    const cached = backgroundCacheRef.current[trackCacheKey]
     if (cached) {
-      setBlurredBg(cached)
+      setGeneratedBg(cached)
       return
     }
 
     let isCancelled = false
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.src = artworkUrl
 
-    img.onload = () => {
-      if (isCancelled) {
-        return
-      }
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        setBlurredBg(null)
-        return
-      }
-
-      const scaledWidth = Math.max(1, Math.floor(img.width / 10))
-      const scaledHeight = Math.max(1, Math.floor(img.height / 10))
-      canvas.width = scaledWidth
-      canvas.height = scaledHeight
-      ctx.filter = 'blur(40px)'
-      ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight)
-
-      try {
-        const url = canvas.toDataURL('image/jpeg', 0.7)
-        blurCacheRef.current[trackCacheKey] = url
-        setBlurredBg(url)
-      } catch (err) {
-        console.error('Failed to create blurred background', err)
-        setBlurredBg(null)
-      }
-    }
-
-    img.onerror = () => {
-      if (!isCancelled) {
-        setBlurredBg(null)
-      }
-    }
+    generateAppleMusicStyleBackground(artworkUrl)
+      .then((backgroundUrl) => {
+        if (isCancelled) {
+          return
+        }
+        backgroundCacheRef.current[trackCacheKey] = backgroundUrl
+        setGeneratedBg(backgroundUrl)
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          console.error('Failed to generate background', error)
+          setGeneratedBg(null)
+        }
+      })
 
     return () => {
       isCancelled = true
@@ -470,13 +449,14 @@ function App() {
     [palette],
   )
 
-  const blurredBackgroundStyle = useMemo<CSSProperties>(
+  const generatedBackgroundStyle = useMemo<CSSProperties>(
     () => ({
-      backgroundImage: blurredBg ? `url(${blurredBg})` : undefined,
+      backgroundImage: generatedBg ? `url(${generatedBg})` : undefined,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
     }),
-    [blurredBg],
+    [generatedBg],
   )
 
   const handlePlayPause = useCallback(() => {
@@ -649,11 +629,7 @@ function App() {
 
   return (
     <div className="app" style={backgroundStyle}>
-      <div className="app-backdrop" style={blurredBackgroundStyle} />
-      <div className="app-ambient" aria-hidden="true">
-        <div className="ambient-layer layer-1" />
-        <div className="ambient-layer layer-2" />
-      </div>
+      <div className="app-backdrop" style={generatedBackgroundStyle} />
       <div className="app-overlay" />
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
