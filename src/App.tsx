@@ -522,53 +522,61 @@ function App() {
       <div className="app-overlay" />
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
-          <div className="player-grid">
-            <div className="player-cover" aria-live="polite">
-              <div
-                className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`}
-                style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
-              >
-                {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
-              </div>
-            </div>
+          <div className="player-column">
+            <div className="player-upper">
+              <header className="player-header">
+                <p className="eyebrow">SOLARA MUSIC</p>
+                <h1 className="player-heading">沉浸式音乐体验</h1>
+              </header>
 
-            <div className="player-progress-area">
-              <div className="player-meta">
+              <div className="player-cover" aria-live="polite">
+                <div
+                  className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`}
+                  style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
+                >
+                  {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
+                </div>
+              </div>
+
+              <div className="player-track-meta">
                 <h2 className="player-title">{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
                 <p className="player-artist">
                   {currentTrack ? `${currentTrack.artists} · ${currentTrack.album}` : '即时搜索 · 立刻播放'}
                 </p>
               </div>
-
-              <div className="timeline" role="group" aria-label="播放进度">
-                <span className="time time-start" aria-hidden="true">
-                  {formatTime(progress)}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 0}
-                  value={Math.min(progress, duration || 0)}
-                  step={0.1}
-                  onChange={(event) => handleSeek(Number(event.target.value))}
-                  aria-valuemin={0}
-                  aria-valuemax={duration || 0}
-                  aria-valuenow={Math.min(progress, duration || 0)}
-                  aria-label="播放进度"
-                  style={timelineStyle}
-                />
-                <span className="time time-end" aria-hidden="true">
-                  {formatTime(duration)}
-                </span>
-              </div>
             </div>
 
-            <div className="player-controls" role="group" aria-label="播放控制">
-              <button
-                type="button"
-                className="control-button"
-                onClick={() => {
-                  if (!searchResults.length) {
+            <div className="player-lower">
+              <div className="player-progress">
+                <div className="timeline" role="group" aria-label="播放进度">
+                  <span className="time time-start" aria-hidden="true">
+                    {formatTime(progress)}
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || 0}
+                    value={Math.min(progress, duration || 0)}
+                    step={0.1}
+                    onChange={(event) => handleSeek(Number(event.target.value))}
+                    aria-valuemin={0}
+                    aria-valuemax={duration || 0}
+                    aria-valuenow={Math.min(progress, duration || 0)}
+                    aria-label="播放进度"
+                    style={timelineStyle}
+                  />
+                  <span className="time time-end" aria-hidden="true">
+                    {formatTime(duration)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="player-controls" role="group" aria-label="播放控制">
+                <button
+                  type="button"
+                  className="control-button"
+                  onClick={() => {
+                    if (!searchResults.length) {
                     return
                   }
                   autoplayRef.current = true
@@ -615,18 +623,19 @@ function App() {
               </button>
             </div>
 
-            <div className="player-volume">
-              <VolumeIcon />
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(event) => handleVolumeChange(Number(event.target.value))}
-                aria-label="音量"
-                style={volumeStyle}
-              />
+              <div className="player-volume">
+                <VolumeIcon />
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                  aria-label="音量"
+                  style={volumeStyle}
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -710,7 +719,7 @@ function App() {
                           )}
                         </div>
                         <div className="track-meta">
-                          <span className="track-title">{track.name}</span>
+                          <span className="track-title track__title">{track.name}</span>
                           <span className="track-artist">{track.artist.join('、')}</span>
                         </div>
                         <span className="track-duration" aria-hidden={!isActive}>
