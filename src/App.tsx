@@ -142,12 +142,14 @@ function App() {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.8)
   const [activeLyricIndex, setActiveLyricIndex] = useState(0)
-  const [activePanel, setActivePanel] = useState<'playlist' | 'lyrics'>('playlist')
+  const [activePanel, setActivePanel] = useState<'playlist' | 'lyrics'>('lyrics')
   const [playlist, setPlaylist] = useState<TrackDetails[]>([])
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
   const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
   const [generatedBg, setGeneratedBg] = useState<string | null>(null)
+  const [displayedBg, setDisplayedBg] = useState<string | null>(null)
+  const [isBackgroundVisible, setIsBackgroundVisible] = useState(true)
   const backgroundCacheRef = useRef<Record<string, string>>({})
   const [isShuffle, setIsShuffle] = useState(false)
   const [repeatMode, setRepeatMode] = useState<'none' | 'one' | 'all'>('none')
@@ -398,6 +400,7 @@ function App() {
       setProgress(0)
       setDuration(0)
       setActiveLyricIndex(0)
+      setActivePanel('lyrics')
       setIsBuffering(true)
       const trackIdentifier = getTrackKey(details)
       setCurrentTrackId(trackIdentifier)
@@ -494,14 +497,34 @@ function App() {
     [palette],
   )
 
+  useEffect(() => {
+    if (!generatedBg) {
+      setDisplayedBg(null)
+      setIsBackgroundVisible(true)
+      return
+    }
+
+    setIsBackgroundVisible(false)
+    setDisplayedBg(generatedBg)
+
+    const frame = window.requestAnimationFrame(() => {
+      setIsBackgroundVisible(true)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+    }
+  }, [generatedBg])
+
   const generatedBackgroundStyle = useMemo<CSSProperties>(
     () => ({
-      backgroundImage: generatedBg ? `url(${generatedBg})` : undefined,
+      backgroundImage: displayedBg ? `url(${displayedBg})` : undefined,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
+      opacity: isBackgroundVisible ? 0.82 : 0,
     }),
-    [generatedBg],
+    [displayedBg, isBackgroundVisible],
   )
 
   const toggleShuffle = useCallback(() => {
@@ -696,9 +719,9 @@ function App() {
     return currentTrack.lyrics.map((line, index) => {
       const isActive = index === activeLyricIndex
       return (
-        <div key={`${line.time}-${index}`} className={`lyric-line${isActive ? ' active' : ''}`}>
-          <p className="lyric-text">{line.text}</p>
-          {line.translation && <p className="lyric-translation">{line.translation}</p>}
+        <div key={`${line.time}-${index}`} className={`lyrics-line${isActive ? ' active' : ''}`}>
+          <span className="lyrics-text">{line.text}</span>
+          {line.translation && <span className="lyrics-translation">{line.translation}</span>}
         </div>
       )
     })
@@ -921,7 +944,7 @@ function App() {
             {error && <div className="error-banner">{error}</div>}
 
             <div
-              className="list-scroll"
+              className={`list-scroll${activePanel === 'lyrics' ? ' is-lyrics' : ''}`}
               role={activePanel === 'playlist' ? 'listbox' : 'document'}
               id={activePanel === 'playlist' ? 'panel-playlist' : 'panel-lyrics'}
               aria-labelledby={activePanel === 'playlist' ? 'tab-playlist' : 'tab-lyrics'}
@@ -978,39 +1001,39 @@ function App() {
                     <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
                     {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
                   </header>
-                  <div className="lyrics-scroll">{lyricsContent}</div>
+                  <div className="lyrics-content">{lyricsContent}</div>
                 </div>
               )}
             </div>
           </div>
         </aside>
       </main>
-      <div className="bottom-right-buttons" role="tablist" aria-label="内容切换">
-        <button
-          type="button"
-          id="tab-playlist"
-          role="tab"
-          className={`quick-action-button${activePanel === 'playlist' ? ' active' : ''}`}
-          onClick={() => setActivePanel('playlist')}
-          aria-selected={activePanel === 'playlist'}
-          aria-controls="panel-playlist"
-          title="播放列表"
-        >
-          <ListMusic strokeWidth={1.6} aria-hidden="true" />
-          <span className="sr-only">显示播放列表</span>
-        </button>
+      <div className="bottom-right" role="tablist" aria-label="内容切换">
         <button
           type="button"
           id="tab-lyrics"
           role="tab"
-          className={`quick-action-button${activePanel === 'lyrics' ? ' active' : ''}`}
+          className={activePanel === 'lyrics' ? 'active' : ''}
           onClick={() => setActivePanel('lyrics')}
           aria-selected={activePanel === 'lyrics'}
           aria-controls="panel-lyrics"
           title="歌词"
         >
-          <Mic2 strokeWidth={1.6} aria-hidden="true" />
+          <Mic2 size={22} aria-hidden="true" />
           <span className="sr-only">显示歌词</span>
+        </button>
+        <button
+          type="button"
+          id="tab-playlist"
+          role="tab"
+          className={activePanel === 'playlist' ? 'active' : ''}
+          onClick={() => setActivePanel('playlist')}
+          aria-selected={activePanel === 'playlist'}
+          aria-controls="panel-playlist"
+          title="播放列表"
+        >
+          <ListMusic size={22} aria-hidden="true" />
+          <span className="sr-only">显示播放列表</span>
         </button>
       </div>
     </div>
