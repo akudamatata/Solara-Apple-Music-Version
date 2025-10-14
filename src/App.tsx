@@ -166,6 +166,8 @@ function App() {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
   const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
+  const [blurredBg, setBlurredBg] = useState<string | null>(null)
+  const blurCacheRef = useRef<Record<string, string>>({})
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
@@ -179,10 +181,12 @@ function App() {
     activeIndexRef.current = activeIndex
   }, [activeIndex])
 
+  const trackCacheKey = currentTrack ? `${currentTrack.id}-${currentTrack.source}` : null
+  const artworkUrl = currentTrack?.artworkUrl
+
   useEffect(() => {
     let isActive = true
 
-    const artworkUrl = currentTrack?.artworkUrl
     if (!artworkUrl) {
       setPalette(DEFAULT_PALETTE)
       return () => {
@@ -205,7 +209,63 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [currentTrack?.artworkUrl])
+  }, [artworkUrl])
+
+  useEffect(() => {
+    if (!artworkUrl || !trackCacheKey) {
+      setBlurredBg(null)
+      return
+    }
+
+    const cached = blurCacheRef.current[trackCacheKey]
+    if (cached) {
+      setBlurredBg(cached)
+      return
+    }
+
+    let isCancelled = false
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = artworkUrl
+
+    img.onload = () => {
+      if (isCancelled) {
+        return
+      }
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        setBlurredBg(null)
+        return
+      }
+
+      const scaledWidth = Math.max(1, Math.floor(img.width / 10))
+      const scaledHeight = Math.max(1, Math.floor(img.height / 10))
+      canvas.width = scaledWidth
+      canvas.height = scaledHeight
+      ctx.filter = 'blur(40px)'
+      ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight)
+
+      try {
+        const url = canvas.toDataURL('image/jpeg', 0.7)
+        blurCacheRef.current[trackCacheKey] = url
+        setBlurredBg(url)
+      } catch (err) {
+        console.error('Failed to create blurred background', err)
+        setBlurredBg(null)
+      }
+    }
+
+    img.onerror = () => {
+      if (!isCancelled) {
+        setBlurredBg(null)
+      }
+    }
+
+    return () => {
+      isCancelled = true
+    }
+  }, [artworkUrl, trackCacheKey])
 
   useEffect(() => {
     if (audioRef.current) {
@@ -406,9 +466,17 @@ function App() {
         '--panel-bg': palette.panel,
         '--panel-border': palette.panelBorder,
         '--text-muted': palette.muted,
-        '--artwork-url': currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : 'none',
       }) as CSSProperties,
-    [palette, currentTrack?.artworkUrl],
+    [palette],
+  )
+
+  const blurredBackgroundStyle = useMemo<CSSProperties>(
+    () => ({
+      backgroundImage: blurredBg ? `url(${blurredBg})` : undefined,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }),
+    [blurredBg],
   )
 
   const handlePlayPause = useCallback(() => {
@@ -581,7 +649,7 @@ function App() {
 
   return (
     <div className="app" style={backgroundStyle}>
-      <div className="app-backdrop" />
+      <div className="app-backdrop" style={blurredBackgroundStyle} />
       <div className="app-ambient" aria-hidden="true">
         <div className="ambient-layer layer-1" />
         <div className="ambient-layer layer-2" />
