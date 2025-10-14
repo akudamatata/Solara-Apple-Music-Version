@@ -136,7 +136,8 @@
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: clamp(2.4rem, 4.6vw, 3.4rem);
-  padding: clamp(2.2rem, 4.8vw, 3.4rem);
+  --layout-padding: clamp(2.2rem, 4.8vw, 3.4rem);
+  padding: var(--layout-padding);
   height: 100%;
   width: 100%;
   box-sizing: border-box;
@@ -159,20 +160,21 @@
 }
 
 .playback-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  gap: clamp(1.1rem, 2.2vw, 2rem);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) repeat(4, auto);
+  grid-auto-rows: auto;
+  justify-items: center;
+  align-content: center;
+  gap: clamp(1rem, 2.4vh, 2rem);
   min-height: 0;
   height: 100%;
+  max-height: min(
+    100%,
+    max(0px, calc(100dvh - (var(--layout-padding) * 2) - (var(--panel-padding) * 2)))
+  );
   width: min(100%, 560px);
   margin: 0 auto;
   padding-block: clamp(1.2rem, 3vh, 2.8rem);
-}
-
-.playback-stack > * {
-  flex-shrink: 0;
 }
 
 .brand-bar {
@@ -201,9 +203,13 @@
 }
 
 .artwork-wrapper {
-  width: min(34vw, 520px, 54vh);
+  width: min(48vh, clamp(240px, 32vw, 460px));
+  max-width: 100%;
+  max-height: min(48vh, clamp(240px, 32vw, 460px));
   margin: 0 auto;
-  max-height: clamp(260px, 54vh, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .artwork {
@@ -785,18 +791,20 @@
 
 @media (max-height: 860px) {
   .app-layout {
-    padding: clamp(1.8rem, 4vh, 2.6rem);
+    --layout-padding: clamp(1.8rem, 4vh, 2.6rem);
+    padding: var(--layout-padding);
     gap: clamp(1.8rem, 4vw, 2.6rem);
     --panel-padding: clamp(1.6rem, 3.6vw, 2.4rem);
   }
 
   .playback-stack {
-    gap: clamp(0.9rem, 2.4vh, 1.6rem);
+    gap: clamp(0.8rem, 2vh, 1.4rem);
+    padding-block: clamp(0.8rem, 2vh, 1.8rem);
   }
 
   .artwork-wrapper {
-    width: min(32vw, 480px, 48vh);
-    max-height: clamp(220px, 48vh, 480px);
+    width: min(44vh, clamp(220px, 30vw, 400px));
+    max-height: min(44vh, clamp(220px, 30vw, 400px));
   }
 
   .brand-title {
@@ -804,14 +812,15 @@
   }
 
   .play-toggle {
-    width: 78px;
-    height: 78px;
+    width: 72px;
+    height: 72px;
   }
 }
 
 @media (max-height: 720px) {
   .app-layout {
-    padding: clamp(1.4rem, 3.6vh, 2.2rem);
+    --layout-padding: clamp(1.4rem, 3.6vh, 2.2rem);
+    padding: var(--layout-padding);
     gap: clamp(1.4rem, 4vw, 2rem);
     --panel-padding: clamp(1.2rem, 3.2vw, 2rem);
   }
@@ -832,19 +841,29 @@
     font-size: 0.9rem;
   }
 
+  .playback-stack {
+    gap: clamp(0.7rem, 1.6vh, 1.1rem);
+    padding-block: clamp(0.6rem, 1.6vh, 1.2rem);
+  }
+
+  .artwork-wrapper {
+    width: min(40vh, clamp(200px, 28vw, 340px));
+    max-height: min(40vh, clamp(200px, 28vw, 340px));
+  }
+
   .timeline {
     gap: 0.9rem;
     font-size: 0.85rem;
   }
 
   .control-button {
-    width: 50px;
-    height: 50px;
+    width: 46px;
+    height: 46px;
   }
 
   .play-toggle {
-    width: 68px;
-    height: 68px;
+    width: 60px;
+    height: 60px;
   }
 
   .volume-row {
@@ -1051,7 +1070,8 @@ input[type='range']::-moz-range-track {
 @media (max-width: 1100px) {
   .app-layout {
     gap: clamp(2rem, 4vw, 3rem);
-    padding: clamp(2.5rem, 5vw, 3.25rem);
+    --layout-padding: clamp(2.5rem, 5vw, 3.25rem);
+    padding: var(--layout-padding);
   }
 }
 
