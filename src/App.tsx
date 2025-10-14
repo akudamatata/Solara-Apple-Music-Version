@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import './App.css'
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
+import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
+import type { BackgroundPalette } from './utils/palette'
 
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
@@ -161,6 +164,7 @@ function App() {
   const [volume, setVolume] = useState(0.8)
   const [activeLyricIndex, setActiveLyricIndex] = useState(0)
   const [activePanel, setActivePanel] = useState<'playlist' | 'lyrics'>('playlist')
+  const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
 
   useEffect(() => {
     searchResultsRef.current = searchResults
@@ -169,6 +173,34 @@ function App() {
   useEffect(() => {
     currentTrackRef.current = currentTrack
   }, [currentTrack])
+
+  useEffect(() => {
+    let isActive = true
+
+    const artworkUrl = currentTrack?.artworkUrl
+    if (!artworkUrl) {
+      setPalette(DEFAULT_PALETTE)
+      return () => {
+        isActive = false
+      }
+    }
+
+    extractPaletteFromImage(artworkUrl)
+      .then((nextPalette) => {
+        if (isActive) {
+          setPalette(nextPalette)
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setPalette(DEFAULT_PALETTE)
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [currentTrack?.artworkUrl])
 
   useEffect(() => {
     if (audioRef.current) {
@@ -389,14 +421,22 @@ function App() {
     }
   }, [teardownAudio])
 
-  const backgroundStyle = useMemo(() => {
-    if (!currentTrack?.artworkUrl) {
-      return undefined
-    }
-    return {
-      ['--artwork-url' as string]: `url(${currentTrack.artworkUrl})`,
-    }
-  }, [currentTrack?.artworkUrl])
+  const backgroundStyle = useMemo<CSSProperties>(
+    () =>
+      ({
+        '--bg-color-1': palette.primary,
+        '--bg-color-2': palette.secondary,
+        '--bg-color-3': palette.tertiary,
+        '--accent-color': palette.accent,
+        '--accent-soft': palette.accentSoft,
+        '--accent-strong': palette.accentStrong,
+        '--panel-bg': palette.panel,
+        '--panel-border': palette.panelBorder,
+        '--text-muted': palette.muted,
+        '--artwork-url': currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : 'none',
+      }) as CSSProperties,
+    [palette, currentTrack?.artworkUrl],
+  )
 
   const handlePlayPause = useCallback(() => {
     const audio = audioRef.current
@@ -459,9 +499,35 @@ function App() {
 
   const isBusy = isBuffering || isLoadingTrack
 
+  const progressPercent = useMemo(() => {
+    if (!duration || duration <= 0) {
+      return 0
+    }
+    const safeProgress = Math.min(Math.max(progress, 0), duration)
+    return (safeProgress / duration) * 100
+  }, [duration, progress])
+
+  const timelineStyle = useMemo<CSSProperties>(() => {
+    const percentage = Math.min(Math.max(progressPercent, 0), 100)
+    return {
+      background: `linear-gradient(90deg, var(--accent-color) 0%, var(--accent-strong) ${percentage}%, rgba(255, 255, 255, 0.24) ${percentage}%, rgba(255, 255, 255, 0.24) 100%)`,
+    }
+  }, [progressPercent])
+
+  const volumeStyle = useMemo<CSSProperties>(() => {
+    const percentage = Math.min(Math.max(volume * 100, 0), 100)
+    return {
+      background: `linear-gradient(90deg, rgba(255, 255, 255, 0.42) 0%, var(--accent-strong) ${percentage}%, rgba(255, 255, 255, 0.2) ${percentage}%, rgba(255, 255, 255, 0.2) 100%)`,
+    }
+  }, [volume])
+
   return (
     <div className="app" style={backgroundStyle}>
       <div className="app-backdrop" />
+      <div className="app-ambient" aria-hidden="true">
+        <div className="ambient-layer layer-1" />
+        <div className="ambient-layer layer-2" />
+      </div>
       <div className="app-overlay" />
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
@@ -499,6 +565,7 @@ function App() {
                 aria-valuemax={duration || 0}
                 aria-valuenow={Math.min(progress, duration || 0)}
                 aria-label="播放进度"
+                style={timelineStyle}
               />
               <span aria-hidden="true">{formatTime(duration)}</span>
             </div>
@@ -565,6 +632,7 @@ function App() {
                 value={volume}
                 onChange={(event) => handleVolumeChange(Number(event.target.value))}
                 aria-label="音量"
+                style={volumeStyle}
               />
             </div>
 
