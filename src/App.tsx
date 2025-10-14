@@ -531,122 +531,130 @@ function App() {
       <div className="app-overlay" />
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
-          <div className="playback-stack">
-            <header className="brand-bar">
-              <h1 className="brand-title">Solara Music</h1>
-              <p className="brand-subtitle">沉浸式高品质音乐体验</p>
+          <div className="playback-grid">
+            <header className="playback-header">
+              <div className="brand-bar">
+                <h1 className="brand-title">Solara Music</h1>
+                <p className="brand-subtitle">沉浸式高品质音乐体验</p>
+              </div>
+
+              <div className="playback-info">
+                <span className="eyebrow">{currentTrack ? '现在播放' : '等待播放'}</span>
+                <h2>{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
+                <p>{currentTrack ? `${currentTrack.artists} · ${currentTrack.album}` : '即时搜索 · 立刻播放'}</p>
+              </div>
             </header>
 
-            <div className="artwork-wrapper" aria-live="polite">
+            <div className="album-stage" aria-live="polite">
               <div
-                className={`artwork${currentTrack?.artworkUrl ? ' loaded' : ''}`}
+                className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`}
                 style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
               >
                 {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
               </div>
             </div>
 
-            <div className="playback-info">
-              <span className="eyebrow">{currentTrack ? '现在播放' : '等待播放'}</span>
-              <h2>{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
-              <p>{currentTrack ? `${currentTrack.artists} · ${currentTrack.album}` : '即时搜索 · 立刻播放'}</p>
-            </div>
-
-            <div className="timeline" role="group" aria-label="播放进度">
-              <span aria-hidden="true">{formatTime(progress)}</span>
-              <input
-                type="range"
-                min={0}
-                max={duration || 0}
-                value={Math.min(progress, duration || 0)}
-                step={0.1}
-                onChange={(event) => handleSeek(Number(event.target.value))}
-                aria-valuemin={0}
-                aria-valuemax={duration || 0}
-                aria-valuenow={Math.min(progress, duration || 0)}
-                aria-label="播放进度"
-                style={timelineStyle}
-              />
-              <span aria-hidden="true">{formatTime(duration)}</span>
-            </div>
-
-            <div className="control-row" role="group" aria-label="播放控制">
-              <button
-                type="button"
-                className="control-button"
-                onClick={() => {
-                  if (!searchResults.length) {
-                    return
-                  }
-                  autoplayRef.current = true
-                  setSelectedIndex((prev) => {
-                    if (prev <= 0) {
-                      return Math.max(searchResults.length - 1, 0)
-                    }
-                    return prev - 1
-                  })
-                }}
-                disabled={!searchResults.length}
-                aria-label="上一首"
-              >
-                <PrevIcon />
-              </button>
-              <button
-                type="button"
-                className={`control-button play-toggle${isBusy ? ' buffering' : ''}`}
-                onClick={handlePlayPause}
-                disabled={!currentTrack || isLoadingTrack}
-                aria-label={isPlaying ? '暂停' : '播放'}
-              >
-                {isBusy ? <span className="sr-only">缓冲中</span> : isPlaying ? <PauseIcon /> : <PlayIcon />}
-              </button>
-              <button
-                type="button"
-                className="control-button"
-                onClick={() => {
-                  if (!searchResults.length) {
-                    return
-                  }
-                  autoplayRef.current = true
-                  setSelectedIndex((prev) => {
-                    if (prev === -1) {
-                      return 0
-                    }
-                    return (prev + 1) % searchResults.length
-                  })
-                }}
-                disabled={!searchResults.length}
-                aria-label="下一首"
-              >
-                <NextIcon />
-              </button>
-            </div>
-
-            <div className="volume-row">
-              <VolumeIcon />
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(event) => handleVolumeChange(Number(event.target.value))}
-                aria-label="音量"
-                style={volumeStyle}
-              />
-            </div>
-
-            {currentTrack && (
-              <div className="playback-footer">
-                <span className="source-chip">来自 {currentTrack.source}</span>
-                {upcomingTrack && (
-                  <div className="up-next">
-                    <span className="eyebrow">接下来</span>
-                    <p>{upcomingTrack}</p>
-                  </div>
-                )}
+            <div className="playback-controls">
+              <div className="timeline" role="group" aria-label="播放进度">
+                <span aria-hidden="true">{formatTime(progress)}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 0}
+                  value={Math.min(progress, duration || 0)}
+                  step={0.1}
+                  onChange={(event) => handleSeek(Number(event.target.value))}
+                  aria-valuemin={0}
+                  aria-valuemax={duration || 0}
+                  aria-valuenow={Math.min(progress, duration || 0)}
+                  aria-label="播放进度"
+                  style={timelineStyle}
+                />
+                <span aria-hidden="true">{formatTime(duration)}</span>
               </div>
-            )}
+
+              <div className="control-row" role="group" aria-label="播放控制">
+                <button
+                  type="button"
+                  className="control-button"
+                  onClick={() => {
+                    if (!searchResults.length) {
+                      return
+                    }
+                    autoplayRef.current = true
+                    setSelectedIndex((prev) => {
+                      if (prev <= 0) {
+                        return Math.max(searchResults.length - 1, 0)
+                      }
+                      return prev - 1
+                    })
+                  }}
+                  disabled={!searchResults.length}
+                  aria-label="上一首"
+                >
+                  <PrevIcon />
+                </button>
+                <button
+                  type="button"
+                  className={`control-button play-toggle${isBusy ? ' buffering' : ''}`}
+                  onClick={handlePlayPause}
+                  disabled={!currentTrack || isLoadingTrack}
+                  aria-label={isPlaying ? '暂停' : '播放'}
+                >
+                  {isBusy ? <span className="sr-only">缓冲中</span> : isPlaying ? <PauseIcon /> : <PlayIcon />}
+                </button>
+                <button
+                  type="button"
+                  className="control-button"
+                  onClick={() => {
+                    if (!searchResults.length) {
+                      return
+                    }
+                    autoplayRef.current = true
+                    setSelectedIndex((prev) => {
+                      if (prev === -1) {
+                        return 0
+                      }
+                      return (prev + 1) % searchResults.length
+                    })
+                  }}
+                  disabled={!searchResults.length}
+                  aria-label="下一首"
+                >
+                  <NextIcon />
+                </button>
+              </div>
+
+              <div className="volume-row">
+                <VolumeIcon />
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                  aria-label="音量"
+                  style={volumeStyle}
+                />
+              </div>
+            </div>
+
+            <footer className="playback-footer">
+              {currentTrack ? (
+                <>
+                  <span className="source-chip">来自 {currentTrack.source}</span>
+                  {upcomingTrack && (
+                    <div className="up-next">
+                      <span className="eyebrow">接下来</span>
+                      <p>{upcomingTrack}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className="footer-placeholder">选择歌曲后显示来源</span>
+              )}
+            </footer>
           </div>
         </section>
 
@@ -718,6 +726,7 @@ function App() {
                         aria-selected={isActive}
                         className={`track-item${isActive ? ' active' : ''}`}
                         onClick={() => handleSelect(index)}
+                        title={`${track.name} · ${track.artist.join('、')} · ${track.album}`}
                       >
                         <div className="track-thumb" aria-hidden="true">
                           <span className="track-letter">{track.name.charAt(0)}</span>
@@ -731,8 +740,8 @@ function App() {
                           <span className="track-title">{track.name}</span>
                           <span className="track-artist">{track.artist.join('、')}</span>
                         </div>
-                        <span className="track-album" title={track.album}>
-                          {track.album}
+                        <span className="track-duration" aria-hidden={!isActive}>
+                          {isActive && duration ? formatTime(duration) : '--:--'}
                         </span>
                       </button>
                     )
