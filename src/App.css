@@ -1,9 +1,9 @@
 .app {
   position: relative;
-  min-height: 100vh;
+  min-height: 100svh;
+  height: 100dvh;
+  width: 100%;
   display: flex;
-  justify-content: center;
-  align-items: stretch;
   overflow: hidden;
   color: #fff;
   background: radial-gradient(circle at top left, #1c1d2f 0%, #090a12 65%, #05060c 100%);
@@ -33,11 +33,18 @@
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(560px, 0.64fr) minmax(360px, 0.36fr);
-  gap: 3.5rem;
-  width: min(1320px, 94vw);
-  padding: 3.5rem 3rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: clamp(2.5rem, 4vw, 3.5rem);
+  padding: clamp(2.75rem, 4vw, 3.5rem);
+  width: 100%;
+  height: 100%;
   align-items: stretch;
+  box-sizing: border-box;
+}
+
+.app-content > * {
+  min-width: 0;
+  min-height: 0;
 }
 
 .now-playing,
@@ -48,6 +55,11 @@
   backdrop-filter: blur(36px);
   box-shadow: 0 40px 80px rgba(3, 4, 12, 0.45);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .now-playing::before,
@@ -61,9 +73,24 @@
 }
 
 .now-playing {
-  display: flex;
-  flex-direction: column;
   gap: 2.25rem;
+  overflow-y: auto;
+  padding-right: calc(2.75rem - 0.5rem);
+}
+
+.panel-surface {
+  padding-right: calc(2.75rem - 0.5rem);
+}
+
+.now-playing::-webkit-scrollbar,
+.panel-surface::-webkit-scrollbar {
+  width: 8px;
+}
+
+.now-playing::-webkit-scrollbar-thumb,
+.panel-surface::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
 }
 
 .now-playing-header {
@@ -283,8 +310,6 @@
 .context-panel.playlist .panel-surface,
 .context-panel.lyrics .panel-surface {
   width: 100%;
-  display: flex;
-  flex-direction: column;
   gap: 1.8rem;
 }
 
@@ -372,7 +397,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  max-height: 450px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 0.35rem;
 }
@@ -549,7 +575,7 @@
 
 .lyrics-scroll {
   flex: 1;
-  max-height: 520px;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 0.35rem;
   display: flex;
@@ -678,18 +704,8 @@ input[type='range']::-moz-range-track {
 
 @media (max-width: 1200px) {
   .app-content {
-    grid-template-columns: 1fr;
-    width: min(960px, 94vw);
-    gap: 2.5rem;
-  }
-
-  .context-panel {
-    order: 2;
-  }
-
-  .corner-controls {
-    position: static;
-    align-self: flex-end;
+    gap: clamp(2rem, 4vw, 2.75rem);
+    padding: clamp(2.5rem, 4vw, 3rem);
   }
 }
 
@@ -701,6 +717,7 @@ input[type='range']::-moz-range-track {
   .now-playing,
   .panel-surface {
     padding: 2.25rem;
+    padding-right: calc(2.25rem - 0.4rem);
   }
 
   .artwork-frame {
