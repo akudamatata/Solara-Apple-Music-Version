@@ -146,16 +146,15 @@ function App() {
   const [query, setQuery] = useState(DEFAULT_QUERY)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(-1)
   const [currentTrack, setCurrentTrack] = useState<TrackDetails | null>(null)
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
-  const autoplayRef = useRef(false)
   const currentTrackRef = useRef<TrackDetails | null>(null)
-  const searchResultsRef = useRef<SearchResult[]>([])
+  const playlistRef = useRef<TrackDetails[]>([])
+  const activeIndexRef = useRef(-1)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
@@ -164,15 +163,21 @@ function App() {
   const [volume, setVolume] = useState(0.8)
   const [activeLyricIndex, setActiveLyricIndex] = useState(0)
   const [activePanel, setActivePanel] = useState<'playlist' | 'lyrics'>('playlist')
+  const [playlist, setPlaylist] = useState<TrackDetails[]>([])
+  const [activeIndex, setActiveIndex] = useState(-1)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
-
-  useEffect(() => {
-    searchResultsRef.current = searchResults
-  }, [searchResults])
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
   }, [currentTrack])
+
+  useEffect(() => {
+    playlistRef.current = playlist
+  }, [playlist])
+
+  useEffect(() => {
+    activeIndexRef.current = activeIndex
+  }, [activeIndex])
 
   useEffect(() => {
     let isActive = true
@@ -241,23 +246,6 @@ function App() {
     }
   }, [query])
 
-  useEffect(() => {
-    if (searchResults.length === 0) {
-      setSelectedIndex(-1)
-      setCurrentTrack(null)
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.currentTime = 0
-      }
-      return
-    }
-
-    if (selectedIndex === -1 || selectedIndex >= searchResults.length) {
-      autoplayRef.current = false
-      setSelectedIndex(0)
-    }
-  }, [searchResults, selectedIndex])
-
   const teardownAudio = useCallback(() => {
     cleanupRef.current?.()
     cleanupRef.current = null
@@ -285,7 +273,7 @@ function App() {
   }, [])
 
   const attachAudio = useCallback(
-    (audio: HTMLAudioElement) => {
+    (audio: HTMLAudioElement, onEnded: () => void): void => {
       const onTimeUpdate = () => handleTimeUpdate(audio)
       const onLoaded = () => {
         setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
@@ -294,20 +282,9 @@ function App() {
       const onPause = () => setIsPlaying(false)
       const onWaiting = () => setIsBuffering(true)
       const onPlaying = () => setIsBuffering(false)
-      const onEnded = () => {
+      const handleEnded = () => {
         setIsPlaying(false)
-        autoplayRef.current = true
-        setSelectedIndex((prev) => {
-          if (prev < 0) {
-            return prev
-          }
-          const list = searchResultsRef.current
-          const next = prev + 1
-          if (next < list.length) {
-            return next
-          }
-          return 0
-        })
+        onEnded()
       }
 
       audio.addEventListener('timeupdate', onTimeUpdate)
@@ -316,7 +293,7 @@ function App() {
       audio.addEventListener('pause', onPause)
       audio.addEventListener('waiting', onWaiting)
       audio.addEventListener('playing', onPlaying)
-      audio.addEventListener('ended', onEnded)
+      audio.addEventListener('ended', handleEnded)
 
       cleanupRef.current = () => {
         audio.removeEventListener('timeupdate', onTimeUpdate)
@@ -325,62 +302,81 @@ function App() {
         audio.removeEventListener('pause', onPause)
         audio.removeEventListener('waiting', onWaiting)
         audio.removeEventListener('playing', onPlaying)
-        audio.removeEventListener('ended', onEnded)
+        audio.removeEventListener('ended', handleEnded)
       }
     },
     [handleTimeUpdate],
   )
 
-  const loadTrack = useCallback(
-    async (track: SearchResult, shouldAutoplay: boolean) => {
+  const buildTrackDetails = useCallback(async (track: SearchResult): Promise<TrackDetails> => {
+    const [urlInfo, lyricInfo, picInfo] = await Promise.all([
+      fetchJson<{ url: string }>(
+        `${API_BASE}?types=url&source=${track.source || DEFAULT_SOURCE}&id=${track.id}&br=320`,
+      ),
+      fetchJson<{ lyric?: string | null; tlyric?: string | null }>(
+        `${API_BASE}?types=lyric&source=${track.source || DEFAULT_SOURCE}&id=${track.lyric_id || track.id}`,
+      ),
+      fetchJson<{ url?: string }>(
+        `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=500`,
+      ),
+    ])
+
+    const lyrics = mergeLyrics(lyricInfo.lyric, lyricInfo.tlyric)
+    const artworkUrl = picInfo.url ?? ''
+    const artists = track.artist.join('、')
+
+    return {
+      id: String(track.id),
+      title: track.name,
+      artists,
+      album: track.album,
+      source: track.source,
+      artworkUrl,
+      audioUrl: urlInfo.url,
+      lyrics,
+    }
+  }, [])
+
+  const activateTrack = useCallback(
+    async (details: TrackDetails, shouldAutoplay: boolean, onEnded: () => void) => {
+      currentTrackRef.current = details
+      setCurrentTrack(details)
+
+      teardownAudio()
+      const audio = new Audio(details.audioUrl)
+      audio.crossOrigin = 'anonymous'
+      audio.volume = volume
+      audioRef.current = audio
+      attachAudio(audio, onEnded)
+
+      if (shouldAutoplay) {
+        await audio.play().catch(() => undefined)
+      }
+    },
+    [attachAudio, teardownAudio, volume],
+  )
+
+  const playTrack = useCallback(
+    async (details: TrackDetails, index: number, shouldAutoplay = true) => {
       setIsLoadingTrack(true)
       setError(null)
       setProgress(0)
       setDuration(0)
       setActiveLyricIndex(0)
       setIsBuffering(true)
+      setActiveIndex(index)
 
       try {
-        const [urlInfo, lyricInfo, picInfo] = await Promise.all([
-          fetchJson<{ url: string }>(
-            `${API_BASE}?types=url&source=${track.source || DEFAULT_SOURCE}&id=${track.id}&br=320`,
-          ),
-          fetchJson<{ lyric?: string | null; tlyric?: string | null }>(
-            `${API_BASE}?types=lyric&source=${track.source || DEFAULT_SOURCE}&id=${track.lyric_id || track.id}`,
-          ),
-          fetchJson<{ url?: string }>(
-            `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=500`,
-          ),
-        ])
-
-        const lyrics = mergeLyrics(lyricInfo.lyric, lyricInfo.tlyric)
-        const artworkUrl = picInfo.url ?? ''
-        const artists = track.artist.join('、')
-
-        const details: TrackDetails = {
-          id: String(track.id),
-          title: track.name,
-          artists,
-          album: track.album,
-          source: track.source,
-          artworkUrl,
-          audioUrl: urlInfo.url,
-          lyrics,
-        }
-
-        currentTrackRef.current = details
-        setCurrentTrack(details)
-
-        teardownAudio()
-        const audio = new Audio(details.audioUrl)
-        audio.crossOrigin = 'anonymous'
-        audio.volume = volume
-        audioRef.current = audio
-        attachAudio(audio)
-
-        if (shouldAutoplay) {
-          await audio.play().catch(() => undefined)
-        }
+        await activateTrack(details, shouldAutoplay, () => {
+          const list = playlistRef.current
+          const nextIndex = index + 1
+          if (nextIndex < list.length) {
+            const nextTrack = list[nextIndex]
+            if (nextTrack) {
+              playTrack(nextTrack, nextIndex).catch(() => undefined)
+            }
+          }
+        })
       } catch (err) {
         console.error(err)
         setError('载入歌曲时出现问题，请稍后再试。')
@@ -389,31 +385,8 @@ function App() {
         setIsBuffering(false)
       }
     },
-    [attachAudio, teardownAudio, volume],
+    [activateTrack],
   )
-
-  useEffect(() => {
-    if (selectedIndex < 0) {
-      return
-    }
-    const track = searchResults[selectedIndex]
-    if (!track) {
-      return
-    }
-
-    if (currentTrackRef.current?.id === String(track.id)) {
-      if (autoplayRef.current && audioRef.current) {
-        audioRef.current.currentTime = 0
-        audioRef.current.play().catch(() => undefined)
-      }
-      autoplayRef.current = false
-      return
-    }
-
-    const shouldAutoplay = autoplayRef.current || currentTrackRef.current !== null
-    autoplayRef.current = false
-    loadTrack(track, shouldAutoplay)
-  }, [selectedIndex, searchResults, loadTrack])
 
   useEffect(() => {
     return () => {
@@ -463,10 +436,89 @@ function App() {
     setVolume(value)
   }
 
-  const handleSelect = (index: number) => {
-    autoplayRef.current = true
-    setSelectedIndex(index)
-  }
+  const handlePlaylistSelect = useCallback(
+    async (index: number) => {
+      const track = playlistRef.current[index]
+      if (!track) {
+        return
+      }
+      await playTrack(track, index)
+    },
+    [playTrack],
+  )
+
+  const handleSearchSelect = useCallback(
+    async (track: SearchResult) => {
+      setIsLoadingTrack(true)
+      setIsBuffering(true)
+      setError(null)
+
+      try {
+        const details = await buildTrackDetails(track)
+        let targetIndex = -1
+        setPlaylist((prev) => {
+          const existingIndex = prev.findIndex(
+            (item) => item.id === details.id && item.source === details.source,
+          )
+          if (existingIndex !== -1) {
+            targetIndex = existingIndex
+            const nextList = [...prev]
+            nextList[existingIndex] = details
+            return nextList
+          }
+          targetIndex = prev.length
+          return [...prev, details]
+        })
+
+        if (targetIndex === -1) {
+          targetIndex = 0
+        }
+
+        await playTrack(details, targetIndex)
+      } catch (err) {
+        console.error(err)
+        setError('载入歌曲时出现问题，请稍后再试。')
+        setIsLoadingTrack(false)
+        setIsBuffering(false)
+      } finally {
+        setQuery('')
+        setSearchResults([])
+        setIsSearching(false)
+      }
+    },
+    [buildTrackDetails, playTrack],
+  )
+
+  const handlePrevious = useCallback(() => {
+    const list = playlistRef.current
+    if (!list.length) {
+      return
+    }
+    const nextIndex = activeIndexRef.current > 0 ? activeIndexRef.current - 1 : list.length - 1
+    const target = list[nextIndex]
+    if (target) {
+      playTrack(target, nextIndex).catch(() => undefined)
+    }
+  }, [playTrack])
+
+  const handleNext = useCallback(() => {
+    const list = playlistRef.current
+    if (!list.length) {
+      return
+    }
+    const nextIndex = activeIndexRef.current + 1
+    if (nextIndex < list.length) {
+      const target = list[nextIndex]
+      if (target) {
+        playTrack(target, nextIndex).catch(() => undefined)
+      }
+      return
+    }
+    if (list.length > 1) {
+      const target = list[0]
+      playTrack(target, 0).catch(() => undefined)
+    }
+  }, [playTrack])
 
   const lyricsContent = useMemo(() => {
     if (!currentTrack) {
@@ -512,6 +564,9 @@ function App() {
     }
   }, [volume])
 
+  const trimmedQuery = query.trim()
+  const showSearchDropdown = trimmedQuery.length > 0
+
   return (
     <div className="app" style={backgroundStyle}>
       <div className="app-backdrop" />
@@ -522,72 +577,58 @@ function App() {
       <div className="app-overlay" />
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
-          <div className="player-column">
-            <div className="player-upper">
-              <header className="player-header">
-                <p className="eyebrow">SOLARA MUSIC</p>
-                <h1 className="player-heading">沉浸式音乐体验</h1>
-              </header>
+          <header className="player-header">
+            <p className="eyebrow">SOLARA MUSIC</p>
+            <h1 className="player-heading">沉浸式音乐体验</h1>
+          </header>
 
-              <div className="player-cover" aria-live="polite">
-                <div
-                  className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`}
-                  style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
-                >
-                  {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
-                </div>
-              </div>
-
-              <div className="player-track-meta">
-                <h2 className="player-title">{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
-                <p className="player-artist">
-                  {currentTrack ? `${currentTrack.artists} · ${currentTrack.album}` : '即时搜索 · 立刻播放'}
-                </p>
+          <div className="player-stage" aria-live="polite">
+            <div className="player-cover">
+              <div
+                className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`}
+                style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
+              >
+                {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
               </div>
             </div>
 
-            <div className="player-lower">
-              <div className="player-progress">
-                <div className="timeline" role="group" aria-label="播放进度">
-                  <span className="time time-start" aria-hidden="true">
-                    {formatTime(progress)}
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration || 0}
-                    value={Math.min(progress, duration || 0)}
-                    step={0.1}
-                    onChange={(event) => handleSeek(Number(event.target.value))}
-                    aria-valuemin={0}
-                    aria-valuemax={duration || 0}
-                    aria-valuenow={Math.min(progress, duration || 0)}
-                    aria-label="播放进度"
-                    style={timelineStyle}
-                  />
-                  <span className="time time-end" aria-hidden="true">
-                    {formatTime(duration)}
-                  </span>
-                </div>
-              </div>
+            <div className="player-track-meta">
+              <h2 className="player-title">{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
+              <p className="player-artist">
+                {currentTrack ? `${currentTrack.artists} · ${currentTrack.album}` : '即时搜索 · 立刻播放'}
+              </p>
+            </div>
 
-              <div className="player-controls" role="group" aria-label="播放控制">
-                <button
-                  type="button"
-                  className="control-button"
-                  onClick={() => {
-                    if (!searchResults.length) {
-                    return
-                  }
-                  autoplayRef.current = true
-                  setSelectedIndex((prev) => {
-                    if (prev <= 0) {
-                      return Math.max(searchResults.length - 1, 0)
-                    }
-                    return prev - 1
-                  })
-                }}
-                disabled={!searchResults.length}
+            <div className="player-progress">
+              <div className="timeline" role="group" aria-label="播放进度">
+                <span className="time time-start" aria-hidden="true">
+                  {formatTime(progress)}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 0}
+                  value={Math.min(progress, duration || 0)}
+                  step={0.1}
+                  onChange={(event) => handleSeek(Number(event.target.value))}
+                  aria-valuemin={0}
+                  aria-valuemax={duration || 0}
+                  aria-valuenow={Math.min(progress, duration || 0)}
+                  aria-label="播放进度"
+                  style={timelineStyle}
+                />
+                <span className="time time-end" aria-hidden="true">
+                  {formatTime(duration)}
+                </span>
+              </div>
+            </div>
+
+            <div className="player-controls" role="group" aria-label="播放控制">
+              <button
+                type="button"
+                className="control-button"
+                onClick={handlePrevious}
+                disabled={playlist.length === 0}
                 aria-label="上一首"
               >
                 <PrevIcon />
@@ -604,38 +645,26 @@ function App() {
               <button
                 type="button"
                 className="control-button"
-                onClick={() => {
-                  if (!searchResults.length) {
-                    return
-                  }
-                  autoplayRef.current = true
-                  setSelectedIndex((prev) => {
-                    if (prev === -1) {
-                      return 0
-                    }
-                    return (prev + 1) % searchResults.length
-                  })
-                }}
-                disabled={!searchResults.length}
+                onClick={handleNext}
+                disabled={playlist.length === 0}
                 aria-label="下一首"
               >
                 <NextIcon />
               </button>
             </div>
 
-              <div className="player-volume">
-                <VolumeIcon />
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={volume}
-                  onChange={(event) => handleVolumeChange(Number(event.target.value))}
-                  aria-label="音量"
-                  style={volumeStyle}
-                />
-              </div>
+            <div className="player-volume">
+              <VolumeIcon />
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={volume}
+                onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                aria-label="音量"
+                style={volumeStyle}
+              />
             </div>
           </div>
         </section>
@@ -643,17 +672,49 @@ function App() {
         <aside className="panel list-panel" aria-label="播放列表与歌词">
           <div className="list-stack">
             <header className="list-header">
-              <div className={`search-bar${isSearching ? ' searching' : ''}`}>
-                <SearchIcon />
-                <input
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value)
-                  }}
-                  placeholder="搜索艺术家、歌曲或专辑"
-                  spellCheck={false}
-                />
-                {isSearching && <LoadingSpinner />}
+              <div className="search-area">
+                <div className={`search-bar${isSearching ? ' searching' : ''}`}>
+                  <SearchIcon />
+                  <input
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value)
+                    }}
+                    placeholder="搜索艺术家、歌曲或专辑"
+                    spellCheck={false}
+                  />
+                  {isSearching && <LoadingSpinner />}
+                </div>
+
+                {showSearchDropdown && (
+                  <div className="search-dropdown" role="listbox" aria-label="搜索建议">
+                    {isSearching && <div className="search-status">正在搜索…</div>}
+                    {!isSearching && !searchResults.length && (
+                      <div className="search-status empty">没有找到相关歌曲</div>
+                    )}
+                    {searchResults.map((track) => {
+                      const coverUrl = `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
+                      return (
+                        <button
+                          type="button"
+                          key={`${track.id}-${track.source}`}
+                          className="search-result"
+                          role="option"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => handleSearchSelect(track)}
+                        >
+                          <span className="search-result-thumb" aria-hidden="true">
+                            <img src={coverUrl} alt="" loading="lazy" />
+                          </span>
+                          <span className="search-result-meta">
+                            <span className="search-result-title">{track.name}</span>
+                            <span className="search-result-artist">{track.artist.join('、')}</span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="segmented-control" role="tablist" aria-label="内容切换">
@@ -695,11 +756,11 @@ function App() {
               {activePanel === 'playlist' ? (
                 <>
                   <div className="results-meta">
-                    <span className="eyebrow">搜索结果</span>
-                    <span className="result-count">{searchResults.length} 首歌曲</span>
+                    <span className="eyebrow">播放列表</span>
+                    <span className="result-count">{playlist.length} 首歌曲</span>
                   </div>
-                  {searchResults.map((track, index) => {
-                    const isActive = index === selectedIndex
+                  {playlist.map((track, index) => {
+                    const isActive = index === activeIndex
                     return (
                       <button
                         type="button"
@@ -707,11 +768,15 @@ function App() {
                         role="option"
                         aria-selected={isActive}
                         className={`track-item${isActive ? ' active' : ''}`}
-                        onClick={() => handleSelect(index)}
-                        title={`${track.name} · ${track.artist.join('、')} · ${track.album}`}
+                        onClick={() => handlePlaylistSelect(index)}
+                        title={`${track.title} · ${track.artists} · ${track.album}`}
                       >
                         <div className="track-thumb" aria-hidden="true">
-                          <span className="track-letter">{track.name.charAt(0)}</span>
+                          {track.artworkUrl ? (
+                            <img src={track.artworkUrl} alt="" loading="lazy" />
+                          ) : (
+                            <span className="track-letter">{track.title.charAt(0)}</span>
+                          )}
                           {isActive && (
                             <span className="equalizer" aria-hidden="true">
                               <span />
@@ -719,8 +784,8 @@ function App() {
                           )}
                         </div>
                         <div className="track-meta">
-                          <span className="track-title track__title">{track.name}</span>
-                          <span className="track-artist">{track.artist.join('、')}</span>
+                          <span className="track-title track__title">{track.title}</span>
+                          <span className="track-artist">{track.artists}</span>
                         </div>
                         <span className="track-duration" aria-hidden={!isActive}>
                           {isActive && duration ? formatTime(duration) : '--:--'}
@@ -728,8 +793,8 @@ function App() {
                       </button>
                     )
                   })}
-                  {!searchResults.length && !isSearching && (
-                    <div className="empty-state">没有找到相关歌曲</div>
+                  {!playlist.length && (
+                    <div className="empty-state">播放列表为空，快去搜索一首喜欢的歌曲吧</div>
                   )}
                 </>
               ) : (
