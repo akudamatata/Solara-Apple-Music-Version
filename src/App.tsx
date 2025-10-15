@@ -233,19 +233,6 @@ const NextIcon = () => (
   </svg>
 )
 
-const VolumeIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      d="M4.5 9.5v5h2.88L12 18.12V5.88L7.38 9.5H4.5zm12.6-3.1a6 6 0 010 11.2m-2.26-8.94a3 3 0 010 6.68"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
-
 const LoadingSpinner = () => (
   <span className="spinner" aria-hidden="true" />
 )
@@ -958,8 +945,8 @@ function App() {
             <h1 className="player-heading">沉浸式音乐体验</h1>
           </header>
 
-          <div className="player-stage" aria-live="polite">
-            <div className="player-cover">
+          <div className="player-stage left-pane" aria-live="polite">
+            <div className="player-cover cover">
               <div
                 className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`}
                 style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
@@ -969,76 +956,75 @@ function App() {
             </div>
 
             <div className="player-track-meta">
-              <h2 className="player-title">{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
-              <p className="player-artist">
+              <h2 className="player-title track-title">{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
+              <p className="player-artist track-artist">
                 {currentTrack ? `${currentTrack.artists} · ${currentTrack.album}` : '即时搜索 · 立刻播放'}
               </p>
             </div>
 
             <div className="player-progress">
-              <div className="timeline" role="group" aria-label="播放进度">
-                <span className="time time-start" aria-hidden="true">
-                  {formatTime(progress)}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 0}
-                  value={Math.min(progress, duration || 0)}
-                  step={0.1}
-                  onChange={(event) => handleSeek(Number(event.target.value))}
-                  aria-valuemin={0}
-                  aria-valuemax={duration || 0}
-                  aria-valuenow={Math.min(progress, duration || 0)}
-                  aria-label="播放进度"
-                  style={timelineStyle}
-                />
-                <span className="time time-end" aria-hidden="true">
-                  {formatTime(duration)}
-                </span>
+              <input
+                type="range"
+                min={0}
+                max={duration || 0}
+                value={Math.min(progress, duration || 0)}
+                step={0.1}
+                onChange={(event) => handleSeek(Number(event.target.value))}
+                aria-valuemin={0}
+                aria-valuemax={duration || 0}
+                aria-valuenow={Math.min(progress, duration || 0)}
+                aria-label="播放进度"
+                className="progress"
+                style={timelineStyle}
+              />
+              <div className="time-row" aria-hidden="true">
+                <span className="time time-start">{formatTime(progress)}</span>
+                <span className="time time-end">{formatTime(duration)}</span>
               </div>
             </div>
 
-            <div className="player-controls controls" role="group" aria-label="播放控制">
+            <div className="player-controls control-row" role="group" aria-label="播放控制">
               <button
                 type="button"
-                className={`control-button${isShuffle ? ' active' : ''}`}
+                className={`control-button shuffle${isShuffle ? ' active' : ''}`}
                 onClick={toggleShuffle}
                 aria-pressed={isShuffle}
                 aria-label={shuffleLabel}
               >
                 <Shuffle strokeWidth={1.6} />
               </button>
+              <div className="main-controls">
+                <button
+                  type="button"
+                  className="control-button prev"
+                  onClick={handlePrevious}
+                  disabled={playlist.length === 0}
+                  aria-label="上一首"
+                >
+                  <PrevIcon />
+                </button>
+                <button
+                  type="button"
+                  className={`control-button play-toggle${isBusy ? ' buffering' : ''}`}
+                  onClick={handlePlayPause}
+                  disabled={!currentTrack || isLoadingTrack}
+                  aria-label={isPlaying ? '暂停' : '播放'}
+                >
+                  {isBusy ? <span className="sr-only">缓冲中</span> : isPlaying ? <PauseIcon /> : <PlayIcon />}
+                </button>
+                <button
+                  type="button"
+                  className="control-button next"
+                  onClick={handleNext}
+                  disabled={playlist.length === 0}
+                  aria-label="下一首"
+                >
+                  <NextIcon />
+                </button>
+              </div>
               <button
                 type="button"
-                className="control-button"
-                onClick={handlePrevious}
-                disabled={playlist.length === 0}
-                aria-label="上一首"
-              >
-                <PrevIcon />
-              </button>
-              <button
-                type="button"
-                className={`control-button play-toggle${isBusy ? ' buffering' : ''}`}
-                onClick={handlePlayPause}
-                disabled={!currentTrack || isLoadingTrack}
-                aria-label={isPlaying ? '暂停' : '播放'}
-              >
-                {isBusy ? <span className="sr-only">缓冲中</span> : isPlaying ? <PauseIcon /> : <PlayIcon />}
-              </button>
-              <button
-                type="button"
-                className="control-button"
-                onClick={handleNext}
-                disabled={playlist.length === 0}
-                aria-label="下一首"
-              >
-                <NextIcon />
-              </button>
-              <button
-                type="button"
-                className={`control-button${repeatMode !== 'none' ? ' active' : ''}`}
+                className={`control-button repeat${repeatMode !== 'none' ? ' active' : ''}`}
                 onClick={cycleRepeat}
                 aria-label={repeatAriaLabel}
                 aria-pressed={repeatMode !== 'none'}
@@ -1047,8 +1033,10 @@ function App() {
               </button>
             </div>
 
-            <div className="player-volume">
-              <VolumeIcon />
+            <div className="player-volume volume-row">
+              <span className="vol-min" aria-hidden="true">
+                🔈
+              </span>
               <input
                 type="range"
                 min={0}
@@ -1057,8 +1045,12 @@ function App() {
                 value={volume}
                 onChange={(event) => handleVolumeChange(Number(event.target.value))}
                 aria-label="音量"
+                className="volume-slider"
                 style={volumeStyle}
               />
+              <span className="vol-max" aria-hidden="true">
+                🔊
+              </span>
             </div>
           </div>
         </section>
