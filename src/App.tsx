@@ -708,13 +708,11 @@ function App() {
   }, [generatedBg])
 
   const generatedBackgroundStyle = useMemo<CSSProperties>(
-    () => ({
-      backgroundImage: displayedBg ? `url(${displayedBg})` : undefined,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      opacity: isBackgroundVisible ? 0.82 : 0,
-    }),
+    () =>
+      ({
+        '--dynamic-backdrop': displayedBg ? `url(${displayedBg})` : 'none',
+        opacity: isBackgroundVisible ? 0.82 : 0,
+      }) as CSSProperties,
     [displayedBg, isBackgroundVisible],
   )
 

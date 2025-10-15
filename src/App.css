@@ -17,8 +17,19 @@
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
   font-feature-settings: 'liga', 'kern';
   background-color: #05060c;
-  background: radial-gradient(circle at 20% 20%, var(--bg-color-1, rgba(118, 96, 255, 0.72)),
-      var(--bg-color-2, rgba(12, 9, 32, 0.88)) 65%, rgba(5, 7, 18, 0.98));
+  background-image:
+    radial-gradient(
+      140% 140% at 50% 32%,
+      var(--bg-color-1, rgba(118, 96, 255, 0.7)) 0%,
+      rgba(74, 56, 144, 0.52) 36%,
+      rgba(24, 18, 52, 0.88) 72%,
+      rgba(6, 7, 18, 0.98) 100%
+    ),
+    radial-gradient(160% 150% at 18% 18%, var(--bg-color-3, rgba(255, 132, 168, 0.32)), transparent 70%);
+  background-attachment: fixed;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   transition: color 0.6s ease, background 1.4s ease;
   letter-spacing: -0.01em;
   isolation: isolate;
@@ -32,6 +43,20 @@
   --panel-border: rgba(255, 255, 255, 0.08);
   --text-muted: rgba(255, 255, 255, 0.72);
   --divider-color: rgba(255, 255, 255, 0.08);
+}
+
+.app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/D/PwAHygNcxECOwQAAAABJRU5ErkJggg==');
+  background-repeat: repeat;
+  background-size: 220px 220px;
+  mix-blend-mode: soft-light;
+  opacity: 0.055;
+  z-index: 1;
+  transform: translateZ(0);
 }
 
 .sr-only {
@@ -49,17 +74,27 @@
 .app-backdrop {
   position: absolute;
   inset: -12%;
-  background: radial-gradient(
-    circle at 25% 25%,
-    var(--bg-color-1, rgba(120, 96, 255, 0.28)),
-    rgba(7, 6, 20, 0.92)
-  );
-  background-size: cover;
-  background-position: center;
-  transform: scale(1.18);
+  --dynamic-backdrop: none;
+  background-image:
+    var(--dynamic-backdrop),
+    radial-gradient(
+      160% 145% at 24% 18%,
+      var(--bg-color-1, rgba(124, 102, 255, 0.75)) 0%,
+      rgba(48, 32, 96, 0.82) 38%,
+      rgba(16, 12, 40, 0.94) 72%,
+      rgba(6, 7, 18, 1) 100%
+    ),
+    radial-gradient(120% 150% at 78% 16%, var(--bg-color-3, rgba(255, 132, 168, 0.34)) 0%, transparent 70%),
+    linear-gradient(140deg, rgba(10, 11, 26, 0.92) 0%, rgba(5, 6, 18, 0.98) 100%);
+  background-position: center, 50% 38%, 80% 12%, 50% 100%;
+  background-size: cover, 160% 160%, 140% 140%, 200% 200%;
+  background-repeat: no-repeat;
+  background-blend-mode: soft-light, screen, normal, normal;
+  transform: scale(1.18) translateZ(0);
   opacity: 0.8;
   transition: opacity 0.6s ease-in-out;
-  will-change: opacity;
+  will-change: opacity, transform;
+  filter: saturate(112%) brightness(1.02);
   pointer-events: none;
   z-index: 0;
 }
@@ -719,7 +754,9 @@
   box-sizing: border-box;
   padding-right: clamp(0.45rem, 1vw, 0.9rem);
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-gutter: stable;
+  transition: scrollbar-color 0.3s ease;
 }
 
 .list-scroll.is-lyrics {
@@ -728,12 +765,22 @@
 }
 
 .list-scroll::-webkit-scrollbar {
-  width: 9px;
+  width: 8px;
+  background-color: transparent;
 }
 
 .list-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.24);
+  background-color: transparent;
   border-radius: 999px;
+  transition: background-color 0.3s ease;
+}
+
+.list-scroll:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+
+.list-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.24);
 }
 
 .results-meta {
