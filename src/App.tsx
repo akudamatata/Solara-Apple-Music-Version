@@ -1030,9 +1030,10 @@ function App() {
       <div className="app-overlay" />
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
-          <header className="player-header">
+          <header className="player-header" aria-label="Solara 品牌">
             <p className="eyebrow">SOLARA MUSIC</p>
-            <h1 className="player-heading">沉浸式音乐体验</h1>
+            <h1 className="player-heading">SOLARA</h1>
+            <p className="player-subheading">沉浸式音乐体验</p>
           </header>
 
           <div className="player-stage left-pane" aria-live="polite">
