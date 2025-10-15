@@ -1065,7 +1065,7 @@ function App() {
       <h1 className="header-title">SOLARA MUSIC</h1>
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
-          <div className="player-stage left-pane" aria-live="polite">
+          <div className="player-stage left-pane album-section" aria-live="polite">
             <div className="player-cover">
               {currentTrack?.artworkUrl ? (
                 <div className="album-art" style={albumArtStyle} role="img" aria-label={albumArtAriaLabel} />
