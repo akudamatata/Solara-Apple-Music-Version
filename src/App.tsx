@@ -365,6 +365,7 @@ function App() {
   const repeatModeRef = useRef(repeatMode)
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null)
   const lyricsScrollCleanupRef = useRef<(() => void) | null>(null)
+  const searchBarRef = useRef<HTMLDivElement | null>(null)
 
   const handleLyricLineChange = useCallback(() => {
     onLyricLineChange()
@@ -392,6 +393,36 @@ function App() {
   useEffect(() => {
     repeatModeRef.current = repeatMode
   }, [repeatMode])
+
+  useEffect(() => {
+    const updateSearchBarHeight = () => {
+      const searchBar = searchBarRef.current
+      if (searchBar) {
+        document.documentElement.style.setProperty(
+          '--search-bar-height',
+          `${searchBar.offsetHeight}px`,
+        )
+      }
+    }
+
+    updateSearchBarHeight()
+
+    const observer = new ResizeObserver(() => {
+      updateSearchBarHeight()
+    })
+
+    const currentSearchBar = searchBarRef.current
+    if (currentSearchBar) {
+      observer.observe(currentSearchBar)
+    }
+
+    window.addEventListener('resize', updateSearchBarHeight)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateSearchBarHeight)
+    }
+  }, [isSearching, searchResults.length])
 
   const trackCacheKey = currentTrack ? getTrackKey(currentTrack) : null
   const artworkUrl = currentTrack?.artworkUrl
@@ -1165,7 +1196,10 @@ function App() {
           <div className="list-stack">
             <header className="list-header">
               <div className="search-area">
-                <div className={`search-bar${isSearching ? ' searching' : ''}`}>
+                <div
+                  className={`search-bar${isSearching ? ' searching' : ''}`}
+                  ref={searchBarRef}
+                >
                   <SearchIcon />
                   <input
                     value={query}
