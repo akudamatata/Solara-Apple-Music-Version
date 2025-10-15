@@ -1133,7 +1133,9 @@ function App() {
             {error && <div className="error-banner">{error}</div>}
 
             <div
-              className={`list-scroll${activePanel === 'lyrics' ? ' is-lyrics' : ''}`}
+              className={`list-scroll${
+                activePanel === 'lyrics' ? ' is-lyrics' : ' playlist-scroll'
+              }`}
               role={activePanel === 'playlist' ? 'listbox' : 'document'}
               id={activePanel === 'playlist' ? 'panel-playlist' : 'panel-lyrics'}
               aria-labelledby={activePanel === 'playlist' ? 'tab-playlist' : 'tab-lyrics'}
