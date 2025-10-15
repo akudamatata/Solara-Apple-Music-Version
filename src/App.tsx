@@ -194,17 +194,19 @@ const SearchIcon = () => (
   </svg>
 )
 
-const PlayIcon = () => <img src="/icons/play.svg" alt="播放" />
+const iconPath = (name: string) => `${import.meta.env.BASE_URL}icons/${name}`
 
-const PauseIcon = () => <img src="/icons/pause.svg" alt="暂停" />
+const PlayIcon = () => <img src={iconPath('play.svg')} alt="播放" />
 
-const ShuffleIcon = () => <img src="/icons/shuffle.svg" alt="随机播放" />
+const PauseIcon = () => <img src={iconPath('pause.svg')} alt="暂停" />
 
-const RepeatIcon = () => <img src="/icons/repeat.svg" alt="循环播放" />
+const ShuffleIcon = () => <img src={iconPath('shuffle.svg')} alt="随机播放" />
+
+const RepeatIcon = () => <img src={iconPath('repeat.svg')} alt="循环播放" />
 
 const RepeatOneIcon = () => (
   <span className="icon-with-badge">
-    <img src="/icons/repeat.svg" alt="单曲循环" />
+    <img src={iconPath('repeat.svg')} alt="单曲循环" />
     <span className="icon-badge">1</span>
   </span>
 )
@@ -263,9 +265,9 @@ const NextIcon = () => (
   </svg>
 )
 
-const LyricsIcon = () => <img src="/icons/lyrics.svg" alt="歌词" />
+const LyricsIcon = () => <img src={iconPath('lyrics.svg')} alt="歌词" />
 
-const PlaylistIcon = () => <img src="/icons/playlist.svg" alt="播放列表" />
+const PlaylistIcon = () => <img src={iconPath('playlist.svg')} alt="播放列表" />
 
 const LoadingSpinner = () => (
   <span className="spinner" aria-hidden="true" />
@@ -795,7 +797,7 @@ function App() {
 
   const handleSeek = (value: number) => {
     const audio = audioRef.current
-    if (!audio) {
+    if (!audio || !currentTrackRef.current) {
       return
     }
     audio.currentTime = value
@@ -881,6 +883,9 @@ function App() {
     if (!list.length) {
       return
     }
+    if (!currentTrackRef.current) {
+      return
+    }
     if (shuffleEnabledRef.current) {
       const history = shuffleHistoryRef.current
       while (history.length) {
@@ -908,6 +913,9 @@ function App() {
   const handleNext = useCallback(() => {
     const list = playlistRef.current
     if (!list.length) {
+      return
+    }
+    if (!currentTrackRef.current) {
       return
     }
     const currentIndex = activeIndexRef.current
@@ -994,28 +1002,33 @@ function App() {
   }, [volume])
 
   const albumArtStyle = useMemo<CSSProperties>(() => {
-    if (currentTrack?.artworkUrl) {
-      return {
-        '--album-art-image': `url(${currentTrack.artworkUrl})`,
-      } as CSSProperties
+    if (!currentTrack?.artworkUrl) {
+      return {}
     }
     return {
-      '--album-art-image': 'none',
+      '--album-art-image': `url(${currentTrack.artworkUrl})`,
     } as CSSProperties
   }, [currentTrack?.artworkUrl])
 
-  const albumArtClassName = useMemo(() => {
-    const classes = ['album-art']
+  const albumArtAriaLabel = useMemo(() => {
     if (currentTrack) {
-      classes.push('playing')
-      if (currentTrack.artworkUrl) {
-        classes.push('loaded')
-      }
-    } else {
-      classes.push('empty')
+      return currentTrack.artworkUrl
+        ? `${currentTrack.title} 的专辑封面`
+        : `${currentTrack.title} 的专辑封面占位图`
     }
-    return classes.join(' ')
-  }, [currentTrack, currentTrack?.artworkUrl])
+    return '专辑封面占位图'
+  }, [currentTrack])
+
+  const isPlayerReady = Boolean(currentTrack)
+  const progressValue = isPlayerReady ? Math.min(progress, duration || 0) : 0
+  const progressMax = isPlayerReady ? duration || 0 : 0
+  const playerTitle = currentTrack?.title ?? '准备播放'
+  const playerSubtitle = currentTrack
+    ? `${currentTrack.artists} · ${currentTrack.album}`
+    : '搜索并选择一首歌曲开始播放'
+  const navigationDisabled = !isPlayerReady || playlist.length <= 1
+  const shuffleDisabled = !isPlayerReady || playlist.length <= 1
+  const repeatDisabled = !isPlayerReady
 
   const trimmedQuery = query.trim()
   const showSearchDropdown = trimmedQuery.length > 0
@@ -1028,124 +1041,116 @@ function App() {
     <div className="app" style={backgroundStyle}>
       <div className="app-backdrop" style={generatedBackgroundStyle} />
       <div className="app-overlay" />
+      <h1 className="header-title">SOLARA MUSIC</h1>
       <main className="app-layout">
         <section className="panel playback-panel" aria-label="正在播放">
-          <header className="player-header" aria-label="Solara 品牌">
-            <p className="eyebrow">SOLARA MUSIC</p>
-            <h1 className="player-heading">SOLARA</h1>
-            <p className="player-subheading">沉浸式音乐体验</p>
-          </header>
-
           <div className="player-stage left-pane" aria-live="polite">
-            <div className="player-cover cover">
-              <div className={albumArtClassName} style={albumArtStyle}>
-                {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
+            <div className="player-cover">
+              {currentTrack?.artworkUrl ? (
+                <div className="album-art" style={albumArtStyle} role="img" aria-label={albumArtAriaLabel} />
+              ) : (
+                <div className="album-placeholder" role="img" aria-label={albumArtAriaLabel} />
+              )}
+            </div>
+
+            <div className="player-track-meta">
+              <h2 className="player-title track-title">{playerTitle}</h2>
+              <p className="player-artist track-artist">{playerSubtitle}</p>
+            </div>
+
+            <div className="player-progress">
+              <input
+                type="range"
+                min={0}
+                max={progressMax}
+                value={progressValue}
+                step={0.1}
+                onChange={(event) => handleSeek(Number(event.target.value))}
+                aria-valuemin={0}
+                aria-valuemax={progressMax}
+                aria-valuenow={progressValue}
+                aria-label="播放进度"
+                className="progress"
+                style={isPlayerReady ? timelineStyle : undefined}
+                disabled={!isPlayerReady}
+              />
+              <div className="time-row" aria-hidden="true">
+                <span className="time time-start">{formatTime(progressValue)}</span>
+                <span className="time time-end">{formatTime(progressMax)}</span>
               </div>
             </div>
 
-            {currentTrack ? (
-              <>
-                <div className="player-track-meta">
-                  <h2 className="player-title track-title">{currentTrack.title}</h2>
-                  <p className="player-artist track-artist">{`${currentTrack.artists} · ${currentTrack.album}`}</p>
-                </div>
-
-                <div className="player-progress">
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration || 0}
-                    value={Math.min(progress, duration || 0)}
-                    step={0.1}
-                    onChange={(event) => handleSeek(Number(event.target.value))}
-                    aria-valuemin={0}
-                    aria-valuemax={duration || 0}
-                    aria-valuenow={Math.min(progress, duration || 0)}
-                    aria-label="播放进度"
-                    className="progress"
-                    style={timelineStyle}
-                  />
-                  <div className="time-row" aria-hidden="true">
-                    <span className="time time-start">{formatTime(progress)}</span>
-                    <span className="time time-end">{formatTime(duration)}</span>
-                  </div>
-                </div>
-
-                <div className="player-controls control-row" role="group" aria-label="播放控制">
-                  <button
-                    type="button"
-                    className={`control-button icon-btn shuffle${isShuffle ? ' active' : ''}`}
-                    onClick={toggleShuffle}
-                    aria-pressed={isShuffle}
-                    aria-label={shuffleLabel}
-                  >
-                    <ShuffleIcon />
-                  </button>
-                  <div className="main-controls">
-                    <button
-                      type="button"
-                      className="control-button icon-btn prev"
-                      onClick={handlePrevious}
-                      disabled={playlist.length === 0}
-                      aria-label="上一首"
-                    >
-                      <PrevIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className={`control-button icon-btn play-toggle${isBusy ? ' buffering' : ''}`}
-                      onClick={handlePlayPause}
-                      disabled={!currentTrack || isLoadingTrack}
-                      aria-label={isPlaying ? '暂停' : '播放'}
-                    >
-                      {isBusy ? <span className="sr-only">缓冲中</span> : isPlaying ? <PauseIcon /> : <PlayIcon />}
-                    </button>
-                    <button
-                      type="button"
-                      className="control-button icon-btn next"
-                      onClick={handleNext}
-                      disabled={playlist.length === 0}
-                      aria-label="下一首"
-                    >
-                      <NextIcon />
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    className={`control-button icon-btn repeat${repeatMode !== 'none' ? ' active' : ''}`}
-                    onClick={cycleRepeat}
-                    aria-label={repeatAriaLabel}
-                    aria-pressed={repeatMode !== 'none'}
-                  >
-                    <RepeatIconComponent />
-                  </button>
-                </div>
-
-                <div className="player-volume volume-row">
-                  <span className="vol-min" aria-hidden="true">
-                    <SpeakerLowIcon />
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={volume}
-                    onChange={(event) => handleVolumeChange(Number(event.target.value))}
-                    aria-label="音量"
-                    className="volume-slider"
-                    style={volumeStyle}
-                  />
-                  <span className="vol-max" aria-hidden="true">
-                    <SpeakerHighIcon />
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="empty-state-card" role="status" aria-live="polite">
-                <p>选择并播放一首歌曲</p>
+            <div className="player-controls control-row" role="group" aria-label="播放控制">
+              <button
+                type="button"
+                className={`control-button icon-btn shuffle${isPlayerReady && isShuffle ? ' active' : ''}`}
+                onClick={toggleShuffle}
+                aria-pressed={isPlayerReady && isShuffle}
+                aria-label={shuffleLabel}
+                disabled={shuffleDisabled}
+              >
+                <ShuffleIcon />
+              </button>
+              <div className="main-controls">
+                <button
+                  type="button"
+                  className="control-button icon-btn prev"
+                  onClick={handlePrevious}
+                  disabled={navigationDisabled}
+                  aria-label="上一首"
+                >
+                  <PrevIcon />
+                </button>
+                <button
+                  type="button"
+                  className={`control-button icon-btn play-toggle${isBusy ? ' buffering' : ''}`}
+                  onClick={handlePlayPause}
+                  disabled={!isPlayerReady || isLoadingTrack}
+                  aria-label={isPlaying ? '暂停' : '播放'}
+                >
+                  {isBusy ? <span className="sr-only">缓冲中</span> : isPlaying ? <PauseIcon /> : <PlayIcon />}
+                </button>
+                <button
+                  type="button"
+                  className="control-button icon-btn next"
+                  onClick={handleNext}
+                  disabled={navigationDisabled}
+                  aria-label="下一首"
+                >
+                  <NextIcon />
+                </button>
               </div>
-            )}
+              <button
+                type="button"
+                className={`control-button icon-btn repeat${isPlayerReady && repeatMode !== 'none' ? ' active' : ''}`}
+                onClick={cycleRepeat}
+                aria-label={repeatAriaLabel}
+                aria-pressed={isPlayerReady && repeatMode !== 'none'}
+                disabled={repeatDisabled}
+              >
+                <RepeatIconComponent />
+              </button>
+            </div>
+
+            <div className="player-volume volume-row">
+              <span className="vol-min" aria-hidden="true">
+                <SpeakerLowIcon />
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={volume}
+                onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                aria-label="音量"
+                className="volume-slider"
+                style={volumeStyle}
+              />
+              <span className="vol-max" aria-hidden="true">
+                <SpeakerHighIcon />
+              </span>
+            </div>
           </div>
         </section>
 
@@ -1222,15 +1227,13 @@ function App() {
             {error && <div className="error-banner">{error}</div>}
 
             <div
-              className={`list-scroll${
-                activePanel === 'lyrics' ? ' is-lyrics' : ' playlist-scroll'
-              }`}
+              className={`list-scroll${activePanel === 'lyrics' ? ' is-lyrics' : ''}`}
               role={activePanel === 'playlist' ? 'listbox' : 'document'}
               id={activePanel === 'playlist' ? 'panel-playlist' : 'panel-lyrics'}
               aria-labelledby={activePanel === 'playlist' ? 'tab-playlist' : 'tab-lyrics'}
             >
               {activePanel === 'playlist' ? (
-                <>
+                <div className="playlist-view">
                   <div className="results-meta">
                     <span className="eyebrow">播放列表</span>
                     <span className="result-count">{playlist.length} 首歌曲</span>
@@ -1273,7 +1276,7 @@ function App() {
                   {!playlist.length && (
                     <div className="empty-state">播放列表为空，快去搜索一首喜欢的歌曲吧</div>
                   )}
-                </>
+                </div>
               ) : (
                 <div className="lyrics-panel">
                   <header className="lyrics-header">
