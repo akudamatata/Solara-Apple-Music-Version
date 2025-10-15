@@ -958,13 +958,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  scroll-behavior: smooth;
 }
 
 .lyrics-scroll::before,
 .lyrics-scroll::after {
   content: '';
   display: block;
-  height: 10vh;
+  height: 20vh;
 }
 
 .lyrics-scroll::-webkit-scrollbar {

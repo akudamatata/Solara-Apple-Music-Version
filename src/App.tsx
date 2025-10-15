@@ -26,11 +26,30 @@ function getActiveLyric(container: HTMLElement): HTMLElement | null {
   )
 }
 
-function scrollActiveLyricToCenter(container: HTMLElement, active: HTMLElement, smooth = true) {
-  const top = active.offsetTop + active.offsetHeight / 2 - container.clientHeight / 2
-  container.scrollTo({
-    top: Math.max(0, top),
-    behavior: smooth ? 'smooth' : 'auto',
+function scrollActiveLyricToCenter(
+  container: HTMLElement | null,
+  active: HTMLElement | null,
+  smooth = true,
+) {
+  if (!container || !active) {
+    return
+  }
+
+  requestAnimationFrame(() => {
+    if (!container || !active || !container.isConnected || !active.isConnected) {
+      return
+    }
+
+    const top =
+      active.offsetTop +
+      active.offsetHeight / 2 -
+      container.clientHeight / 2 +
+      container.scrollTop
+
+    container.scrollTo({
+      top: Math.max(0, top),
+      behavior: smooth ? 'smooth' : 'auto',
+    })
   })
 }
 
@@ -590,14 +609,20 @@ function App() {
 
     resetLyricsScrollState()
     const active = getActiveLyric(container)
+    let initialScrollTimer: number | null = null
     if (active) {
-      scrollActiveLyricToCenter(container, active, false)
+      initialScrollTimer = window.setTimeout(() => {
+        scrollActiveLyricToCenter(container, active, false)
+      }, 100)
     }
 
     const cleanup = attachLyricsScrollGuards(container)
     lyricsScrollCleanupRef.current = cleanup
 
     return () => {
+      if (initialScrollTimer !== null) {
+        window.clearTimeout(initialScrollTimer)
+      }
       cleanup()
       if (lyricsScrollCleanupRef.current === cleanup) {
         lyricsScrollCleanupRef.current = null
