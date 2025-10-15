@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import type { CSSProperties } from 'react'
 import './App.css'
 import { mergeLyrics } from './utils/lyrics'
@@ -278,11 +278,38 @@ const NextIcon = () => (
   </svg>
 )
 
-const LyricsIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-    <path d="M4 5h16v2H4zm0 4h12v2H4zm0 4h8v2H4zm0 4h5v2H4z" />
-  </svg>
-)
+const LyricsIcon = () => {
+  const maskId = useId()
+  return (
+    <svg
+      data-testid="invertible-mask-svg"
+      className="invertible-mask invertible-mask--not-inverted"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 28 28"
+      width="28"
+      height="28"
+      role="presentation"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <mask data-testid="invertible-mask" id={maskId}>
+        <rect width="100%" height="100%" fill="black" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 64 64"
+          width="22"
+          height="22"
+          x="3"
+          y="3"
+          fill="white"
+        >
+          <path d="M18.53 62.724c1.764 0 3.115-.81 5.257-2.707l9.816-8.638h16.62c8.72 0 13.777-5.152 13.777-13.777V15.053c0-8.625-5.056-13.777-13.777-13.777H13.777C5.057 1.276 0 6.42 0 15.053v22.549c0 8.633 5.27 13.777 13.456 13.777h1.016v6.793c0 2.812 1.511 4.552 4.057 4.552zm1.57-7.16v-8.11c0-1.81-.805-2.485-2.486-2.485h-3.55c-5.165 0-7.654-2.603-7.654-7.654V15.34c0-5.033 2.489-7.632 7.654-7.632h35.872c5.149 0 7.654 2.599 7.654 7.632v21.975c0 5.051-2.505 7.654-7.654 7.654H33.188c-1.835 0-2.702.33-4.012 1.65zm-2.212-32.177c0 3.398 2.156 5.936 5.388 5.936 1.361 0 2.592-.302 3.372-1.263h.385c-.868 2.231-3 3.845-5.303 4.4-.95.243-1.327.737-1.327 1.425 0 .8.658 1.36 1.51 1.36 3.174 0 8.8-3.775 8.8-10.6 0-4.138-2.602-7.336-6.588-7.336-3.576 0-6.237 2.518-6.237 6.078zm15.663 0c0 3.398 2.134 5.936 5.387 5.936 1.34 0 2.593-.302 3.373-1.263h.39c-.865 2.231-3.023 3.845-5.308 4.4-.947.243-1.327.737-1.327 1.425 0 .8.636 1.36 1.51 1.36 3.178 0 8.779-3.775 8.779-10.6 0-4.138-2.577-7.336-6.567-7.336-3.577 0-6.237 2.518-6.237 6.078z" />
+        </svg>
+      </mask>
+      <rect data-testid="invertible-mask-rect" width="100%" height="100%" mask={`url(#${maskId})`} />
+    </svg>
+  )
+}
 
 const PlaylistIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
