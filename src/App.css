@@ -16,7 +16,7 @@
 
 :root {
   --layout-top-baseline: 96px;
-  --layout-horizontal-padding: clamp(2.2rem, 4.8vw, 3.4rem);
+  --layout-horizontal-padding: clamp(2.6rem, 4vw, 3.6rem);
   --space-stack-xs: clamp(0.35rem, 0.9vw, 0.55rem);
   --space-stack-sm: clamp(0.6rem, 1.4vw, 0.9rem);
   --space-stack-md: clamp(0.95rem, 1.9vw, 1.3rem);
@@ -154,12 +154,11 @@
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 3vw;
-  row-gap: clamp(2rem, 4vw, 3.4rem);
-  align-items: start;
+  grid-template-columns: minmax(320px, 40%) minmax(0, 60%);
+  gap: clamp(2.6rem, 4.8vw, 3.6rem);
+  align-items: flex-start;
   justify-items: stretch;
-  --layout-padding: var(--layout-horizontal-padding);
+  --layout-padding: clamp(2.2rem, 4.2vw, 3.1rem);
   padding: var(--layout-top-baseline) var(--layout-horizontal-padding) var(--layout-padding);
   min-height: 100vh;
   min-height: 100svh;
@@ -167,7 +166,7 @@
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
-  --panel-padding: clamp(2rem, 4vw, 3rem);
+  --panel-padding: clamp(2.2rem, 4.4vw, 3.2rem);
 }
 
 .panel {
@@ -184,12 +183,14 @@
 }
 
 .playback-panel {
+  --panel-padding: clamp(2.6rem, 5vw, 3.6rem);
   align-items: stretch;
   gap: clamp(2rem, 4vh, 3rem);
   justify-content: center;
 }
 
 .list-panel {
+  --panel-padding: clamp(2.4rem, 4.6vw, 3.2rem);
   align-items: stretch;
   justify-content: flex-start;
   min-width: 0;
@@ -202,21 +203,25 @@
   display: grid;
   grid-template-columns:
     [gutter] minmax(16px, 1fr)
-    [content-start] minmax(420px, 560px)
+    [content-start] minmax(360px, 540px)
     [content-end] minmax(16px, 1fr);
   grid-auto-rows: auto;
-  row-gap: clamp(1.4rem, 2.8vw, 2rem);
+  row-gap: clamp(1.6rem, 3vh, 2.4rem);
   align-items: start;
   align-content: start;
   justify-items: center;
   width: 100%;
   margin: 0;
-  padding: 24px 0 clamp(1.8rem, 4vh, 3rem);
+  padding: 0 0 clamp(2.4rem, 4vh, 3.4rem);
   box-sizing: border-box;
   overflow-x: hidden;
-  --album-overhang: clamp(8px, 1.6vw, 12px);
+  --album-overhang: clamp(12px, 2vw, 18px);
   --progress-width: min(var(--search-bar-height, 340px), 336px);
   --album-width: min(calc(var(--progress-width) + var(--album-overhang) * 2), 360px);
+}
+
+.album-section {
+  row-gap: clamp(1.6rem, 3vh, 2.4rem);
 }
 
 .left-pane {
@@ -309,7 +314,7 @@
   margin: 0;
   text-align: left;
   display: grid;
-  row-gap: 4px;
+  row-gap: clamp(0.5rem, 1vw, 0.75rem);
   grid-column: content-start / content-end;
   width: min(100%, var(--progress-width));
   justify-self: center;
@@ -340,7 +345,7 @@
 .player-progress {
   grid-column: content-start / content-end;
   display: grid;
-  row-gap: clamp(0.35rem, 0.8vw, 0.55rem);
+  row-gap: clamp(0.6rem, 1.2vw, 0.85rem);
   margin-top: 0;
   width: min(100%, var(--progress-width));
 }
@@ -457,6 +462,50 @@
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
+.control-button.shuffle,
+.control-button.repeat {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: none;
+  box-shadow: none;
+  border: none;
+  backdrop-filter: none;
+  opacity: 0.9;
+  transition: color 0.25s ease, opacity 0.25s ease;
+}
+
+.control-button.shuffle svg,
+.control-button.repeat svg {
+  width: 24px;
+  height: 24px;
+  filter: none;
+}
+
+.control-button.shuffle:hover,
+.control-button.shuffle:focus-visible,
+.control-button.repeat:hover,
+.control-button.repeat:focus-visible {
+  background: none;
+  box-shadow: none;
+  transform: none;
+  opacity: 1;
+}
+
+.control-button.shuffle.active,
+.control-button.repeat.active {
+  background: none;
+  box-shadow: none;
+  color: var(--accent-color);
+  opacity: 1;
+}
+
+.control-button.shuffle:disabled,
+.control-button.repeat:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
 .play-toggle {
   width: 68px;
   height: 68px;
@@ -551,7 +600,7 @@
   align-items: center;
   column-gap: clamp(0.8rem, 1.6vw, 1.1rem);
   color: rgba(255, 255, 255, 0.7);
-  padding-bottom: clamp(0.6rem, 2vh, 1rem);
+  padding-bottom: clamp(0.8rem, 2.4vh, 1.3rem);
   margin-top: 0;
   width: min(100%, var(--progress-width));
   justify-self: center;
@@ -696,7 +745,7 @@
   position: relative;
   width: 100%;
   align-self: flex-start;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .search-bar {
@@ -1501,24 +1550,30 @@ input[type='range']::-moz-range-track {
   .player-stage {
     grid-template-columns:
       [gutter] minmax(12px, 1fr)
-      [content-start] minmax(380px, 520px)
+      [content-start] minmax(340px, 520px)
       [content-end] minmax(12px, 1fr);
   }
 }
 
 @media (max-width: 1100px) {
   .app-layout {
-    column-gap: clamp(2rem, 4vw, 3rem);
-    --layout-horizontal-padding: clamp(2.5rem, 5vw, 3.25rem);
-    --layout-top-baseline: clamp(2.6rem, 5.5vw, 3.2rem);
+    grid-template-columns: minmax(280px, 42%) minmax(0, 58%);
+    gap: clamp(2.2rem, 5vw, 3rem);
+    --layout-horizontal-padding: clamp(2.3rem, 4.5vw, 3.1rem);
+    --layout-top-baseline: clamp(2.4rem, 5.4vw, 3rem);
+  }
+
+  .playback-panel {
+    --panel-padding: clamp(2.4rem, 4.8vw, 3.3rem);
   }
 }
 
 @media (max-width: 860px) {
   .app-layout {
     grid-template-columns: 1fr;
-    row-gap: clamp(1.6rem, 5vh, 2.4rem);
+    gap: clamp(1.6rem, 5vw, 2.4rem);
     min-height: auto;
+    --layout-horizontal-padding: clamp(1.8rem, 6vw, 2.4rem);
     --layout-top-baseline: clamp(2.2rem, 6vw, 2.8rem);
   }
 
@@ -1528,7 +1583,7 @@ input[type='range']::-moz-range-track {
 
   .playback-panel,
   .list-panel {
-    padding: clamp(2rem, 5vw, 2.5rem);
+    padding: clamp(2rem, 6vw, 2.6rem);
   }
 
   .playback-panel {
