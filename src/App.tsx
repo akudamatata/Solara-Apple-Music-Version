@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { ListMusic, Mic2 } from 'lucide-react'
 import './App.css'
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
@@ -195,83 +194,22 @@ const SearchIcon = () => (
   </svg>
 )
 
-const PlayIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M8 5v14l11-7z" fill="currentColor" />
-  </svg>
-)
+const PlayIcon = () => <img src="/icons/play.svg" alt="播放" />
 
-const PauseIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M7 5h3v14H7zm7 0h3v14h-3z" fill="currentColor" />
-  </svg>
+const PauseIcon = () => <img src="/icons/pause.svg" alt="暂停" />
+
+const ShuffleIcon = () => <img src="/icons/shuffle.svg" alt="随机播放" />
+
+const RepeatIcon = () => <img src="/icons/repeat.svg" alt="循环播放" />
+
+const RepeatOneIcon = () => (
+  <span className="icon-with-badge">
+    <img src="/icons/repeat.svg" alt="单曲循环" />
+    <span className="icon-badge">1</span>
+  </span>
 )
 
 const iconShadow = 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25))'
-
-const ShuffleIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" style={{ filter: iconShadow }}>
-    <path
-      d="M16.5 17.5H18a2.5 2.5 0 012.5 2.5M16.5 6.5H18A2.5 2.5 0 0020.5 4M3 6.5h4l10 11h3.5M3 17.5h4l3.25-3.58"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M19 8l2-2-2-2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M19 16l2 2-2 2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
-
-const RepeatIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" style={{ filter: iconShadow }}>
-    <path
-      d="M4 7a4 4 0 014-4h8l-2-2m2 2l-2 2m4 11a4 4 0 01-4 4H8l2 2m-2-2l2-2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
-
-const RepeatOneIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" style={{ filter: iconShadow }}>
-    <path
-      d="M4 7a4 4 0 014-4h8l-2-2m2 2l-2 2m4 11a4 4 0 01-4 4H8l2 2m-2-2l2-2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M12 10v4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M12 10l-1.5 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-  </svg>
-)
 
 const SpeakerLowIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" style={{ filter: iconShadow }}>
@@ -324,6 +262,10 @@ const NextIcon = () => (
     />
   </svg>
 )
+
+const LyricsIcon = () => <img src="/icons/lyrics.svg" alt="歌词" />
+
+const PlaylistIcon = () => <img src="/icons/playlist.svg" alt="播放列表" />
 
 const LoadingSpinner = () => (
   <span className="spinner" aria-hidden="true" />
@@ -398,9 +340,10 @@ function App() {
     const updateSearchBarHeight = () => {
       const searchBar = searchBarRef.current
       if (searchBar) {
+        const nextHeight = Math.max(searchBar.offsetHeight, 320)
         document.documentElement.style.setProperty(
           '--search-bar-height',
-          `${searchBar.offsetHeight}px`,
+          `${nextHeight}px`,
         )
       }
     }
@@ -1061,6 +1004,19 @@ function App() {
     } as CSSProperties
   }, [currentTrack?.artworkUrl])
 
+  const albumArtClassName = useMemo(() => {
+    const classes = ['album-art']
+    if (currentTrack) {
+      classes.push('playing')
+      if (currentTrack.artworkUrl) {
+        classes.push('loaded')
+      }
+    } else {
+      classes.push('empty')
+    }
+    return classes.join(' ')
+  }, [currentTrack, currentTrack?.artworkUrl])
+
   const trimmedQuery = query.trim()
   const showSearchDropdown = trimmedQuery.length > 0
   const RepeatIconComponent = repeatMode === 'one' ? RepeatOneIcon : RepeatIcon
@@ -1081,7 +1037,7 @@ function App() {
 
           <div className="player-stage left-pane" aria-live="polite">
             <div className="player-cover cover">
-              <div className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`} style={albumArtStyle}>
+              <div className={albumArtClassName} style={albumArtStyle}>
                 {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
               </div>
             </div>
@@ -1117,7 +1073,7 @@ function App() {
                 <div className="player-controls control-row" role="group" aria-label="播放控制">
                   <button
                     type="button"
-                    className={`control-button shuffle${isShuffle ? ' active' : ''}`}
+                    className={`control-button icon-btn shuffle${isShuffle ? ' active' : ''}`}
                     onClick={toggleShuffle}
                     aria-pressed={isShuffle}
                     aria-label={shuffleLabel}
@@ -1127,7 +1083,7 @@ function App() {
                   <div className="main-controls">
                     <button
                       type="button"
-                      className="control-button prev"
+                      className="control-button icon-btn prev"
                       onClick={handlePrevious}
                       disabled={playlist.length === 0}
                       aria-label="上一首"
@@ -1136,7 +1092,7 @@ function App() {
                     </button>
                     <button
                       type="button"
-                      className={`control-button play-toggle${isBusy ? ' buffering' : ''}`}
+                      className={`control-button icon-btn play-toggle${isBusy ? ' buffering' : ''}`}
                       onClick={handlePlayPause}
                       disabled={!currentTrack || isLoadingTrack}
                       aria-label={isPlaying ? '暂停' : '播放'}
@@ -1145,7 +1101,7 @@ function App() {
                     </button>
                     <button
                       type="button"
-                      className="control-button next"
+                      className="control-button icon-btn next"
                       onClick={handleNext}
                       disabled={playlist.length === 0}
                       aria-label="下一首"
@@ -1155,7 +1111,7 @@ function App() {
                   </div>
                   <button
                     type="button"
-                    className={`control-button repeat${repeatMode !== 'none' ? ' active' : ''}`}
+                    className={`control-button icon-btn repeat${repeatMode !== 'none' ? ' active' : ''}`}
                     onClick={cycleRepeat}
                     aria-label={repeatAriaLabel}
                     aria-pressed={repeatMode !== 'none'}
@@ -1338,26 +1294,26 @@ function App() {
           type="button"
           id="tab-lyrics"
           role="tab"
-          className={activePanel === 'lyrics' ? 'active' : ''}
+          className={`icon-btn${activePanel === 'lyrics' ? ' active' : ''}`}
           onClick={() => setActivePanel('lyrics')}
           aria-selected={activePanel === 'lyrics'}
           aria-controls="panel-lyrics"
           title="歌词"
         >
-          <Mic2 size={22} aria-hidden="true" />
+          <LyricsIcon />
           <span className="sr-only">显示歌词</span>
         </button>
         <button
           type="button"
           id="tab-playlist"
           role="tab"
-          className={activePanel === 'playlist' ? 'active' : ''}
+          className={`icon-btn${activePanel === 'playlist' ? ' active' : ''}`}
           onClick={() => setActivePanel('playlist')}
           aria-selected={activePanel === 'playlist'}
           aria-controls="panel-playlist"
           title="播放列表"
         >
-          <ListMusic size={22} aria-hidden="true" />
+          <PlaylistIcon />
           <span className="sr-only">显示播放列表</span>
         </button>
       </div>
