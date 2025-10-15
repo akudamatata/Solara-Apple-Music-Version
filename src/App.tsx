@@ -194,21 +194,34 @@ const SearchIcon = () => (
   </svg>
 )
 
-const iconPath = (name: string) => `${import.meta.env.BASE_URL}icons/${name}`
+const PlayIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M8 5v14l11-7z" />
+  </svg>
+)
 
-const PlayIcon = () => <img src={iconPath('play.svg')} alt="播放" />
+const PauseIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M6 5h4v14H6zm8 0h4v14h-4z" />
+  </svg>
+)
 
-const PauseIcon = () => <img src={iconPath('pause.svg')} alt="暂停" />
+const ShuffleIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M17 3h4v4h-2V5h-2V3zm0 14h2v-2h2v4h-4v-2zM4 5h2v2h2v2H4V5zm0 14h4v-4H4v4zm12-8l-2.5 2.5L16 16l1.5-1.5L13 9l3-3 1.5 1.5L14 10.5 16 13l1.5-1.5L18 12l-2-2z" />
+  </svg>
+)
 
-const ShuffleIcon = () => <img src={iconPath('shuffle.svg')} alt="随机播放" />
-
-const RepeatIcon = () => <img src={iconPath('repeat.svg')} alt="循环播放" />
+const RepeatIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M17 17H7V7h8V5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10v2l3-3-3-3v2z" />
+  </svg>
+)
 
 const RepeatOneIcon = () => (
-  <span className="icon-with-badge">
-    <img src={iconPath('repeat.svg')} alt="单曲循环" />
-    <span className="icon-badge">1</span>
-  </span>
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M17 17H7V7h8V5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10v2l3-3-3-3v2zm-4-4h-2V9l-1.5.75V8L11 7h1v6z" />
+  </svg>
 )
 
 const iconShadow = 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25))'
@@ -265,9 +278,17 @@ const NextIcon = () => (
   </svg>
 )
 
-const LyricsIcon = () => <img src={iconPath('lyrics.svg')} alt="歌词" />
+const LyricsIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M4 5h16v2H4zm0 4h12v2H4zm0 4h8v2H4zm0 4h5v2H4z" />
+  </svg>
+)
 
-const PlaylistIcon = () => <img src={iconPath('playlist.svg')} alt="播放列表" />
+const PlaylistIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    <path d="M3 5h14v2H3zm0 4h10v2H3zm0 4h7v2H3zm14 2v6l4-3-4-3z" />
+  </svg>
+)
 
 const LoadingSpinner = () => (
   <span className="spinner" aria-hidden="true" />
