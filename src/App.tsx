@@ -11,6 +11,87 @@ import { generateAppleMusicStyleBackground } from './utils/background'
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
 
+let userLyricsScrolling = false
+let resumeLyricsTimer: number | null = null
+
+function getVisibleLyricsContainer(): HTMLElement | null {
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>('.lyrics-scroll'))
+  return candidates.find((el) => el.offsetParent !== null) || null
+}
+
+function getActiveLyric(container: HTMLElement): HTMLElement | null {
+  return (
+    container.querySelector<HTMLElement>('.lyrics-line.current') ||
+    container.querySelector<HTMLElement>('.lyrics-line.active')
+  )
+}
+
+function scrollActiveLyricToCenter(container: HTMLElement, active: HTMLElement, smooth = true) {
+  const top = active.offsetTop + active.offsetHeight / 2 - container.clientHeight / 2
+  container.scrollTo({
+    top: Math.max(0, top),
+    behavior: smooth ? 'smooth' : 'auto',
+  })
+}
+
+function onLyricLineChange() {
+  if (userLyricsScrolling) {
+    return
+  }
+
+  const container = getVisibleLyricsContainer()
+  if (!container) {
+    return
+  }
+
+  const active = getActiveLyric(container)
+  if (active) {
+    scrollActiveLyricToCenter(container, active, true)
+  }
+}
+
+function attachLyricsScrollGuards(container: HTMLElement) {
+  const onUserScroll = () => {
+    userLyricsScrolling = true
+    if (resumeLyricsTimer !== null) {
+      window.clearTimeout(resumeLyricsTimer)
+    }
+    resumeLyricsTimer = window.setTimeout(() => {
+      userLyricsScrolling = false
+      const currentContainer = getVisibleLyricsContainer()
+      if (!currentContainer) {
+        return
+      }
+      const active = getActiveLyric(currentContainer)
+      if (active) {
+        scrollActiveLyricToCenter(currentContainer, active, true)
+      }
+    }, 3500)
+  }
+
+  container.addEventListener('wheel', onUserScroll, { passive: true })
+  container.addEventListener('touchmove', onUserScroll, { passive: true })
+  container.addEventListener('scroll', onUserScroll, { passive: true })
+
+  return () => {
+    container.removeEventListener('wheel', onUserScroll)
+    container.removeEventListener('touchmove', onUserScroll)
+    container.removeEventListener('scroll', onUserScroll)
+    if (resumeLyricsTimer !== null) {
+      window.clearTimeout(resumeLyricsTimer)
+      resumeLyricsTimer = null
+    }
+  }
+}
+
+function resetLyricsScrollState() {
+  userLyricsScrolling = false
+  if (resumeLyricsTimer !== null) {
+    window.clearTimeout(resumeLyricsTimer)
+    resumeLyricsTimer = null
+  }
+}
+
 const getTrackKey = (track: { id: string | number; source?: string }) => {
   const source = track.source || DEFAULT_SOURCE
   return `${track.id}-${source}`
@@ -157,39 +238,11 @@ function App() {
   const shuffleEnabledRef = useRef(isShuffle)
   const repeatModeRef = useRef(repeatMode)
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null)
-  const userScrolledRef = useRef(false)
-  const resetScrollTimeoutRef = useRef<number | null>(null)
-
-  const clearResetScrollTimeout = useCallback(() => {
-    if (resetScrollTimeoutRef.current !== null) {
-      window.clearTimeout(resetScrollTimeoutRef.current)
-      resetScrollTimeoutRef.current = null
-    }
-  }, [])
-
-  const autoScrollLyrics = useCallback(() => {
-    if (userScrolledRef.current) {
-      return
-    }
-
-    const container = lyricsContainerRef.current
-    if (!container) {
-      return
-    }
-
-    const activeLine = container.querySelector<HTMLElement>('.lyrics-line.current')
-    if (activeLine) {
-      activeLine.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }, [])
+  const lyricsScrollCleanupRef = useRef<(() => void) | null>(null)
 
   const handleLyricLineChange = useCallback(() => {
-    if (userScrolledRef.current) {
-      return
-    }
-    clearResetScrollTimeout()
-    autoScrollLyrics()
-  }, [autoScrollLyrics, clearResetScrollTimeout])
+    onLyricLineChange()
+  }, [])
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
@@ -520,38 +573,51 @@ function App() {
   }, [activeLyricIndex, handleLyricLineChange])
 
   useEffect(() => {
-    const container = lyricsContainerRef.current
+    const container = getVisibleLyricsContainer()
+    const htmlContainer = (container as HTMLDivElement | null) ?? null
+    lyricsContainerRef.current = htmlContainer
+
     if (!container) {
-      return
+      resetLyricsScrollState()
+      lyricsScrollCleanupRef.current = null
+      return () => {
+        if (lyricsScrollCleanupRef.current) {
+          lyricsScrollCleanupRef.current()
+          lyricsScrollCleanupRef.current = null
+        }
+      }
     }
 
-    const handleScroll = () => {
-      userScrolledRef.current = true
-      clearResetScrollTimeout()
-      resetScrollTimeoutRef.current = window.setTimeout(() => {
-        userScrolledRef.current = false
-        resetScrollTimeoutRef.current = null
-        autoScrollLyrics()
-      }, 4000)
+    resetLyricsScrollState()
+    const active = getActiveLyric(container)
+    if (active) {
+      scrollActiveLyricToCenter(container, active, false)
     }
 
-    container.addEventListener('scroll', handleScroll, { passive: true })
+    const cleanup = attachLyricsScrollGuards(container)
+    lyricsScrollCleanupRef.current = cleanup
 
     return () => {
-      container.removeEventListener('scroll', handleScroll)
-      clearResetScrollTimeout()
+      cleanup()
+      if (lyricsScrollCleanupRef.current === cleanup) {
+        lyricsScrollCleanupRef.current = null
+      }
+      if (lyricsContainerRef.current === htmlContainer) {
+        lyricsContainerRef.current = null
+      }
     }
-  }, [autoScrollLyrics, clearResetScrollTimeout])
+  }, [activePanel, currentTrack, currentTrackId])
 
   useEffect(() => {
-    userScrolledRef.current = false
-    clearResetScrollTimeout()
-    const container = lyricsContainerRef.current
-    if (container) {
-      container.scrollTo({ top: 0, behavior: 'auto' })
+    return () => {
+      if (lyricsScrollCleanupRef.current) {
+        lyricsScrollCleanupRef.current()
+        lyricsScrollCleanupRef.current = null
+      }
+      resetLyricsScrollState()
+      lyricsContainerRef.current = null
     }
-    autoScrollLyrics()
-  }, [autoScrollLyrics, clearResetScrollTimeout, currentTrack])
+  }, [])
 
   const backgroundStyle = useMemo<CSSProperties>(
     () =>
