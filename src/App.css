@@ -225,8 +225,8 @@
   box-sizing: border-box;
   overflow-x: hidden;
   --album-overhang: clamp(12px, 2vw, 18px);
-  --album-width: clamp(480px, 100%, 720px);
   --progress-width: clamp(480px, 100%, 720px);
+  --album-width: var(--progress-width);
 }
 
 .album-section {
@@ -244,24 +244,25 @@
   align-items: center;
   grid-column: content-start / content-end;
   width: 100%;
-  height: auto;
-  min-width: clamp(420px, 75%, 560px);
-  min-height: clamp(420px, 75%, 560px);
-  max-width: var(--album-width);
   margin: 0 auto;
   padding: 0;
+  max-width: min(100%, var(--progress-width));
 }
 
 .album-art {
-  width: clamp(480px, 100%, 720px);
-  height: clamp(480px, 100%, 720px);
+  width: var(--progress-width);
+  height: var(--progress-width);
+  aspect-ratio: 1 / 1;
+  max-width: min(100%, 680px);
+  max-height: 680px;
+  min-width: 240px;
+  min-height: 240px;
   background-size: cover;
   background-position: center;
   border-radius: 14px;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
   position: relative;
   z-index: 1;
-  max-width: 100%;
   --album-art-image: none;
   background-image:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
@@ -270,7 +271,8 @@
   overflow: hidden;
   display: block;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: box-shadow 0.6s ease, transform 0.4s ease;
+  transition: box-shadow 0.6s ease, transform 0.4s ease,
+    width 0.3s ease, height 0.3s ease;
 }
 
 .album-art::after {
@@ -1287,18 +1289,21 @@
     --panel-padding-inline: clamp(1.6rem, 3.6vw, 2.4rem);
   }
 
+  .player-stage {
+    --progress-width: clamp(220px, 36vh, 360px);
+    --album-width: var(--progress-width);
+  }
+
   .player-grid {
     gap: clamp(1.1rem, 2.4vh, 1.8rem);
     padding-block: clamp(1.2rem, 2.6vh, 2.2rem);
   }
 
-  .album-art {
-    width: clamp(220px, 36vh, 360px);
-  }
-
   .album-art.playing {
-    width: min(var(--search-bar-height, 340px), clamp(260px, 42vh, 360px));
-    height: min(var(--search-bar-height, 340px), clamp(260px, 42vh, 360px));
+    --progress-width: min(
+      var(--search-bar-height, 340px),
+      clamp(260px, 42vh, 360px)
+    );
   }
 
   .play-toggle {
@@ -1316,18 +1321,21 @@
     --panel-padding-inline: clamp(1.2rem, 3.2vw, 2rem);
   }
 
+  .player-stage {
+    --progress-width: clamp(200px, 34vh, 320px);
+    --album-width: var(--progress-width);
+  }
+
   .player-grid {
     gap: clamp(0.9rem, 2vh, 1.3rem);
     padding-block: clamp(1rem, 2vh, 1.6rem);
   }
 
-  .album-art {
-    width: clamp(200px, 34vh, 320px);
-  }
-
   .album-art.playing {
-    width: min(var(--search-bar-height, 320px), clamp(240px, 38vh, 320px));
-    height: min(var(--search-bar-height, 320px), clamp(240px, 38vh, 320px));
+    --progress-width: min(
+      var(--search-bar-height, 320px),
+      clamp(240px, 38vh, 320px)
+    );
   }
 
   .player-title {
@@ -1606,19 +1614,14 @@ input[type='range']::-moz-range-track {
 
   .player-stage {
     grid-template-columns: [content-start] minmax(0, 1fr) [content-end];
-    --album-width: clamp(220px, 68vw, 420px);
     --progress-width: clamp(220px, 90vw, 480px);
+    --album-width: var(--progress-width);
   }
 
   .player-cover {
     min-width: 0;
     min-height: 0;
-    max-width: var(--album-width);
-  }
-
-  .album-art {
-    width: var(--album-width);
-    height: var(--album-width);
+    max-width: min(100%, var(--progress-width));
   }
 
   .bottom-right {
