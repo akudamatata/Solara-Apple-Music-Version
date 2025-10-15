@@ -210,14 +210,16 @@
 
 .player-cover {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
   grid-column: content-start / content-end;
   justify-self: start;
   align-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  min-height: 320px;
   padding: 0;
+  margin-top: 24px;
   margin-bottom: 24px;
 }
 
@@ -235,10 +237,11 @@
 .album-art {
   position: relative;
   z-index: 1;
-  width: var(--search-bar-height, 340px);
-  height: var(--search-bar-height, 340px);
+  width: min(38vw, 360px);
+  max-width: 100%;
+  height: auto;
   aspect-ratio: 1 / 1;
-  border-radius: 18px;
+  border-radius: 20px;
   --album-art-image: none;
   background-image:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
@@ -251,11 +254,23 @@
   align-items: center;
   justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 42px 80px rgba(6, 8, 26, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  transition: box-shadow 0.8s ease, background-image 1s ease;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  transition: width 0.3s ease, height 0.3s ease, box-shadow 0.8s ease, background-image 1s ease;
   transform: none;
   animation: none;
   object-fit: cover;
+}
+
+.album-art.playing {
+  width: min(var(--search-bar-height, 340px), 38vw, 360px);
+  height: min(var(--search-bar-height, 340px), 38vw, 360px);
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.48);
+}
+
+.album-art.empty {
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
 }
 
 .album-art::before {
@@ -280,10 +295,57 @@
 }
 
 .artwork-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: 2.2rem;
   color: rgba(255, 255, 255, 0.7);
   font-size: 1.05rem;
+  width: 100%;
+  height: 100%;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn img {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
+.play-toggle.icon-btn img {
+  width: 28px;
+  height: 28px;
+}
+
+.icon-with-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(12, 9, 32, 0.85);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
 }
 
 
@@ -406,7 +468,8 @@
   z-index: -1;
 }
 
-.control-button svg {
+.control-button img,
+.control-button .icon-with-badge {
   width: 22px;
   height: 22px;
 }
@@ -427,8 +490,9 @@
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.5), 0 16px 36px rgba(0, 0, 0, 0.45);
 }
 
-.control-button.active svg {
-  color: inherit;
+.control-button .icon-with-badge img {
+  width: 100%;
+  height: 100%;
 }
 
 .control-button:disabled {
@@ -1183,8 +1247,12 @@
   }
 
   .album-art {
-    width: clamp(220px, 36vh, 380px);
-    height: clamp(220px, 36vh, 380px);
+    width: clamp(220px, 36vh, 360px);
+  }
+
+  .album-art.playing {
+    width: min(var(--search-bar-height, 340px), clamp(260px, 42vh, 360px));
+    height: min(var(--search-bar-height, 340px), clamp(260px, 42vh, 360px));
   }
 
   .play-toggle {
@@ -1207,8 +1275,12 @@
   }
 
   .album-art {
-    width: clamp(200px, 34vh, 340px);
-    height: clamp(200px, 34vh, 340px);
+    width: clamp(200px, 34vh, 320px);
+  }
+
+  .album-art.playing {
+    width: min(var(--search-bar-height, 320px), clamp(240px, 38vh, 320px));
+    height: min(var(--search-bar-height, 320px), clamp(240px, 38vh, 320px));
   }
 
   .player-title {
