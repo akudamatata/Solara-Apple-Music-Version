@@ -156,6 +156,40 @@ function App() {
   const shuffleHistoryRef = useRef<string[]>([])
   const shuffleEnabledRef = useRef(isShuffle)
   const repeatModeRef = useRef(repeatMode)
+  const lyricsContainerRef = useRef<HTMLDivElement | null>(null)
+  const userScrolledRef = useRef(false)
+  const resetScrollTimeoutRef = useRef<number | null>(null)
+
+  const clearResetScrollTimeout = useCallback(() => {
+    if (resetScrollTimeoutRef.current !== null) {
+      window.clearTimeout(resetScrollTimeoutRef.current)
+      resetScrollTimeoutRef.current = null
+    }
+  }, [])
+
+  const autoScrollLyrics = useCallback(() => {
+    if (userScrolledRef.current) {
+      return
+    }
+
+    const container = lyricsContainerRef.current
+    if (!container) {
+      return
+    }
+
+    const activeLine = container.querySelector<HTMLElement>('.lyrics-line.current')
+    if (activeLine) {
+      activeLine.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [])
+
+  const handleLyricLineChange = useCallback(() => {
+    if (userScrolledRef.current) {
+      return
+    }
+    clearResetScrollTimeout()
+    autoScrollLyrics()
+  }, [autoScrollLyrics, clearResetScrollTimeout])
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
@@ -481,6 +515,44 @@ function App() {
     }
   }, [teardownAudio])
 
+  useEffect(() => {
+    handleLyricLineChange()
+  }, [activeLyricIndex, handleLyricLineChange])
+
+  useEffect(() => {
+    const container = lyricsContainerRef.current
+    if (!container) {
+      return
+    }
+
+    const handleScroll = () => {
+      userScrolledRef.current = true
+      clearResetScrollTimeout()
+      resetScrollTimeoutRef.current = window.setTimeout(() => {
+        userScrolledRef.current = false
+        resetScrollTimeoutRef.current = null
+        autoScrollLyrics()
+      }, 4000)
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      clearResetScrollTimeout()
+    }
+  }, [autoScrollLyrics, clearResetScrollTimeout])
+
+  useEffect(() => {
+    userScrolledRef.current = false
+    clearResetScrollTimeout()
+    const container = lyricsContainerRef.current
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'auto' })
+    }
+    autoScrollLyrics()
+  }, [autoScrollLyrics, clearResetScrollTimeout, currentTrack])
+
   const backgroundStyle = useMemo<CSSProperties>(
     () =>
       ({
@@ -719,7 +791,7 @@ function App() {
     return currentTrack.lyrics.map((line, index) => {
       const isActive = index === activeLyricIndex
       return (
-        <div key={`${line.time}-${index}`} className={`lyrics-line${isActive ? ' active' : ''}`}>
+        <div key={`${line.time}-${index}`} className={`lyrics-line${isActive ? ' current' : ''}`}>
           <span className="lyrics-text">{line.text}</span>
           {line.translation && <span className="lyrics-translation">{line.translation}</span>}
         </div>
@@ -1001,7 +1073,9 @@ function App() {
                     <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
                     {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
                   </header>
-                  <div className="lyrics-content">{lyricsContent}</div>
+                  <div className="lyrics-scroll" ref={lyricsContainerRef}>
+                    <div className="lyrics-content">{lyricsContent}</div>
+                  </div>
                 </div>
               )}
             </div>
