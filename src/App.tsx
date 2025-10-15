@@ -12,10 +12,12 @@ const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
 
 let userLyricsScrolling = false
+let programmaticLyricsScroll = false
 let resumeLyricsTimer: number | null = null
+let releaseProgrammaticScrollTimer: number | null = null
 
 function getVisibleLyricsContainer(): HTMLElement | null {
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>('.lyrics-scroll'))
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>('.lyrics-view'))
   return candidates.find((el) => el.offsetParent !== null) || null
 }
 
@@ -40,16 +42,33 @@ function scrollActiveLyricToCenter(
       return
     }
 
-    const top =
-      active.offsetTop +
-      active.offsetHeight / 2 -
-      container.clientHeight / 2 +
-      container.scrollTop
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = active.getBoundingClientRect()
+    const offset =
+      activeRect.top +
+      activeRect.height / 2 -
+      (containerRect.top + containerRect.height / 2)
 
-    container.scrollTo({
-      top: Math.max(0, top),
+    if (Math.abs(offset) < 0.5) {
+      return
+    }
+
+    programmaticLyricsScroll = true
+    if (releaseProgrammaticScrollTimer !== null) {
+      window.clearTimeout(releaseProgrammaticScrollTimer)
+      releaseProgrammaticScrollTimer = null
+    }
+
+    container.scrollBy({
+      top: offset,
       behavior: smooth ? 'smooth' : 'auto',
     })
+
+    const releaseDelay = smooth ? 650 : 150
+    releaseProgrammaticScrollTimer = window.setTimeout(() => {
+      programmaticLyricsScroll = false
+      releaseProgrammaticScrollTimer = null
+    }, releaseDelay)
   })
 }
 
@@ -71,6 +90,10 @@ function onLyricLineChange() {
 
 function attachLyricsScrollGuards(container: HTMLElement) {
   const onUserScroll = () => {
+    if (programmaticLyricsScroll) {
+      return
+    }
+
     userLyricsScrolling = true
     if (resumeLyricsTimer !== null) {
       window.clearTimeout(resumeLyricsTimer)
@@ -105,9 +128,14 @@ function attachLyricsScrollGuards(container: HTMLElement) {
 
 function resetLyricsScrollState() {
   userLyricsScrolling = false
+  programmaticLyricsScroll = false
   if (resumeLyricsTimer !== null) {
     window.clearTimeout(resumeLyricsTimer)
     resumeLyricsTimer = null
+  }
+  if (releaseProgrammaticScrollTimer !== null) {
+    window.clearTimeout(releaseProgrammaticScrollTimer)
+    releaseProgrammaticScrollTimer = null
   }
 }
 
@@ -609,19 +637,19 @@ function App() {
 
     resetLyricsScrollState()
     const active = getActiveLyric(container)
-    let initialScrollTimer: number | null = null
+    let initialScrollFrame: number | null = null
     if (active) {
-      initialScrollTimer = window.setTimeout(() => {
+      initialScrollFrame = window.requestAnimationFrame(() => {
         scrollActiveLyricToCenter(container, active, false)
-      }, 100)
+      })
     }
 
     const cleanup = attachLyricsScrollGuards(container)
     lyricsScrollCleanupRef.current = cleanup
 
     return () => {
-      if (initialScrollTimer !== null) {
-        window.clearTimeout(initialScrollTimer)
+      if (initialScrollFrame !== null) {
+        window.cancelAnimationFrame(initialScrollFrame)
       }
       cleanup()
       if (lyricsScrollCleanupRef.current === cleanup) {
@@ -680,13 +708,11 @@ function App() {
   }, [generatedBg])
 
   const generatedBackgroundStyle = useMemo<CSSProperties>(
-    () => ({
-      backgroundImage: displayedBg ? `url(${displayedBg})` : undefined,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      opacity: isBackgroundVisible ? 0.82 : 0,
-    }),
+    () =>
+      ({
+        '--dynamic-backdrop': displayedBg ? `url(${displayedBg})` : 'none',
+        opacity: isBackgroundVisible ? 0.82 : 0,
+      }) as CSSProperties,
     [displayedBg, isBackgroundVisible],
   )
 
@@ -1158,13 +1184,13 @@ function App() {
                   )}
                 </>
               ) : (
-                <div className="lyrics-view">
+                <div className="lyrics-panel">
                   <header className="lyrics-header">
                     <span className="eyebrow">歌词</span>
                     <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
                     {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
                   </header>
-                  <div className="lyrics-scroll" ref={lyricsContainerRef}>
+                  <div className="lyrics-view" ref={lyricsContainerRef}>
                     <div className="lyrics-content">{lyricsContent}</div>
                   </div>
                 </div>
