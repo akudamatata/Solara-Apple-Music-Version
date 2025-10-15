@@ -928,7 +928,7 @@
   color: rgba(255, 255, 255, 0.62);
 }
 
-.lyrics-view {
+.lyrics-panel {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -941,10 +941,10 @@
   height: 100%;
   padding: 0 2rem 2rem;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
-.lyrics-scroll {
+.lyrics-view {
+  position: relative;
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -961,14 +961,16 @@
   scroll-behavior: smooth;
 }
 
-.lyrics-scroll::before,
-.lyrics-scroll::after {
+.lyrics-view::before,
+.lyrics-view::after {
   content: '';
   display: block;
+  flex: 0 0 auto;
   height: 20vh;
+  width: 100%;
 }
 
-.lyrics-scroll::-webkit-scrollbar {
+.lyrics-view::-webkit-scrollbar {
   display: none;
 }
 
@@ -989,7 +991,7 @@
 }
 
 .lyrics-content {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
