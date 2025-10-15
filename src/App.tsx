@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { ListMusic, Mic2, Repeat, Repeat1, Shuffle } from 'lucide-react'
 import './App.css'
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
@@ -182,56 +181,31 @@ const formatTime = (value: number) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-const SearchIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      d="M21 21l-4.35-4.35m1.52-3.79a6.54 6.54 0 11-13.07 0 6.54 6.54 0 0113.07 0z"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
+type IconProps = {
+  name: string
+  alt?: string
+  className?: string
+}
+
+const Icon = ({ name, alt = '', className }: IconProps) => (
+  <img
+    src={`/icons/${name}.svg`}
+    alt={alt}
+    className={className}
+    aria-hidden={alt === '' ? true : undefined}
+    draggable={false}
+  />
 )
 
-const PlayIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M8 5v14l11-7z" fill="currentColor" />
-  </svg>
-)
+const SearchIcon = () => <Icon name="search" className="icon search-icon" />
 
-const PauseIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M7 5h3v14H7zm7 0h3v14h-3z" fill="currentColor" />
-  </svg>
-)
+const PlayIcon = () => <Icon name="play" className="icon control-icon" />
 
-const PrevIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      d="M6 6v12M18 6l-8.5 6L18 18V6z"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
+const PauseIcon = () => <Icon name="pause" className="icon control-icon" />
 
-const NextIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      d="M18 6v12M6 6l8.5 6L6 18V6z"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
+const PrevIcon = () => <Icon name="prev" className="icon control-icon" />
+
+const NextIcon = () => <Icon name="next" className="icon control-icon" />
 
 const LoadingSpinner = () => (
   <span className="spinner" aria-hidden="true" />
@@ -929,7 +903,7 @@ function App() {
 
   const trimmedQuery = query.trim()
   const showSearchDropdown = trimmedQuery.length > 0
-  const RepeatIconComponent = repeatMode === 'one' ? Repeat1 : Repeat
+  const repeatIconName = repeatMode === 'one' ? 'repeat-one' : 'repeat'
   const shuffleLabel = isShuffle ? '关闭随机播放' : '开启随机播放'
   const repeatAriaLabel =
     repeatMode === 'none' ? '开启循环播放' : repeatMode === 'all' ? '切换为单曲循环' : '关闭循环播放'
@@ -991,7 +965,7 @@ function App() {
                 aria-pressed={isShuffle}
                 aria-label={shuffleLabel}
               >
-                <Shuffle strokeWidth={1.6} />
+                <Icon name="shuffle" className="icon control-icon" />
               </button>
               <div className="main-controls">
                 <button
@@ -1029,14 +1003,12 @@ function App() {
                 aria-label={repeatAriaLabel}
                 aria-pressed={repeatMode !== 'none'}
               >
-                <RepeatIconComponent strokeWidth={1.6} />
+                <Icon name={repeatIconName} className="icon control-icon" />
               </button>
             </div>
 
             <div className="player-volume volume-row">
-              <span className="vol-min" aria-hidden="true">
-                🔈
-              </span>
+              <Icon name="volume-1" className="icon volume-icon" />
               <input
                 type="range"
                 min={0}
@@ -1048,9 +1020,7 @@ function App() {
                 className="volume-slider"
                 style={volumeStyle}
               />
-              <span className="vol-max" aria-hidden="true">
-                🔊
-              </span>
+              <Icon name="volume-2" className="icon volume-icon" />
             </div>
           </div>
         </section>
@@ -1204,7 +1174,7 @@ function App() {
           aria-controls="panel-lyrics"
           title="歌词"
         >
-          <Mic2 size={22} aria-hidden="true" />
+          <Icon name="lyrics" className="icon quick-toggle-icon" />
           <span className="sr-only">显示歌词</span>
         </button>
         <button
@@ -1217,7 +1187,7 @@ function App() {
           aria-controls="panel-playlist"
           title="播放列表"
         >
-          <ListMusic size={22} aria-hidden="true" />
+          <Icon name="playlist" className="icon quick-toggle-icon" />
           <span className="sr-only">显示播放列表</span>
         </button>
       </div>
