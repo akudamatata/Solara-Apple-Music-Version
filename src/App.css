@@ -1,3 +1,19 @@
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('SF Pro Display'), url('/fonts/SF-Pro-Display-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('SF Pro Display'), url('/fonts/SF-Pro-Display-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --layout-top-baseline: 96px;
   --layout-horizontal-padding: clamp(2.2rem, 4.8vw, 3.4rem);
@@ -187,6 +203,7 @@
 
 .left-pane {
   overflow-x: hidden;
+  margin-top: 80px;
 }
 
 .player-header {
@@ -194,18 +211,40 @@
   top: 24px;
   left: 32px;
   text-align: left;
-  z-index: 10;
+  z-index: 100;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .player-header .eyebrow {
-  margin: 0 0 0.5rem;
+  margin: 0;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .player-heading {
   margin: 0;
-  font-size: clamp(1.4rem, 3vw, 1.8rem);
-  font-weight: 600;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.player-subheading {
+  margin: 0;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 400;
   letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .player-cover {
@@ -721,7 +760,7 @@
   position: relative;
   width: 100%;
   align-self: flex-start;
-  margin-top: 0;
+  margin-top: 24px;
 }
 
 .search-bar {
