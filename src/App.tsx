@@ -901,6 +901,17 @@ function App() {
     }
   }, [volume])
 
+  const albumArtStyle = useMemo<CSSProperties>(() => {
+    if (currentTrack?.artworkUrl) {
+      return {
+        '--album-art-image': `url(${currentTrack.artworkUrl})`,
+      } as CSSProperties
+    }
+    return {
+      '--album-art-image': 'none',
+    } as CSSProperties
+  }, [currentTrack?.artworkUrl])
+
   const trimmedQuery = query.trim()
   const showSearchDropdown = trimmedQuery.length > 0
   const repeatIconName = repeatMode === 'one' ? 'repeat-one' : 'repeat'
@@ -921,41 +932,38 @@ function App() {
 
           <div className="player-stage left-pane" aria-live="polite">
             <div className="player-cover cover">
-              <div
-                className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`}
-                style={{ backgroundImage: currentTrack?.artworkUrl ? `url(${currentTrack.artworkUrl})` : undefined }}
-              >
+              <div className={`album-art${currentTrack?.artworkUrl ? ' loaded' : ''}`} style={albumArtStyle}>
                 {!currentTrack && <span className="artwork-placeholder">搜索并选择一首歌曲</span>}
               </div>
             </div>
 
-            <div className="player-track-meta">
-              <h2 className="player-title track-title">{currentTrack ? currentTrack.title : '选择一首歌曲开始'}</h2>
-              <p className="player-artist track-artist">
-                {currentTrack ? `${currentTrack.artists} · ${currentTrack.album}` : '即时搜索 · 立刻播放'}
-              </p>
-            </div>
+            {currentTrack ? (
+              <>
+                <div className="player-track-meta">
+                  <h2 className="player-title track-title">{currentTrack.title}</h2>
+                  <p className="player-artist track-artist">{`${currentTrack.artists} · ${currentTrack.album}`}</p>
+                </div>
 
-            <div className="player-progress">
-              <input
-                type="range"
-                min={0}
-                max={duration || 0}
-                value={Math.min(progress, duration || 0)}
-                step={0.1}
-                onChange={(event) => handleSeek(Number(event.target.value))}
-                aria-valuemin={0}
-                aria-valuemax={duration || 0}
-                aria-valuenow={Math.min(progress, duration || 0)}
-                aria-label="播放进度"
-                className="progress"
-                style={timelineStyle}
-              />
-              <div className="time-row" aria-hidden="true">
-                <span className="time time-start">{formatTime(progress)}</span>
-                <span className="time time-end">{formatTime(duration)}</span>
-              </div>
-            </div>
+                <div className="player-progress">
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || 0}
+                    value={Math.min(progress, duration || 0)}
+                    step={0.1}
+                    onChange={(event) => handleSeek(Number(event.target.value))}
+                    aria-valuemin={0}
+                    aria-valuemax={duration || 0}
+                    aria-valuenow={Math.min(progress, duration || 0)}
+                    aria-label="播放进度"
+                    className="progress"
+                    style={timelineStyle}
+                  />
+                  <div className="time-row" aria-hidden="true">
+                    <span className="time time-start">{formatTime(progress)}</span>
+                    <span className="time time-end">{formatTime(duration)}</span>
+                  </div>
+                </div>
 
             <div className="player-controls control-row" role="group" aria-label="播放控制">
               <button
