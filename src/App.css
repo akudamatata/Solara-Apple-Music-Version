@@ -743,19 +743,22 @@
   font-size: 0.9rem;
 }
 
+
 .list-scroll {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  overflow-y: auto;
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
   padding-right: clamp(0.45rem, 1vw, 0.9rem);
+}
+
+.playlist-scroll {
+  overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
-  scrollbar-gutter: stable;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   transition: scrollbar-color 0.3s ease;
 }
 
@@ -764,23 +767,26 @@
   padding-right: 0;
 }
 
-.list-scroll::-webkit-scrollbar {
-  width: 8px;
-  background-color: transparent;
+.playlist-scroll::-webkit-scrollbar {
+  width: 6px;
 }
 
-.list-scroll::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 999px;
-  transition: background-color 0.3s ease;
+.playlist-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.list-scroll:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+.playlist-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  transition: background 0.3s ease;
 }
 
-.list-scroll:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.24);
+.playlist-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.playlist-scroll:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
 .results-meta {
