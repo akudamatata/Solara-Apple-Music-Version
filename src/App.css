@@ -831,8 +831,8 @@
   margin-top: 0;
   margin-right: var(--page-gutter);
   display: flex;
-  gap: 0.8rem;
-  align-items: stretch;
+  align-items: center;
+  gap: 12px;
 }
 
 .search-bar-wrapper {
@@ -844,17 +844,17 @@
 .search-bar {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  padding: 0.95rem 1.2rem;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  gap: 0.75rem;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 16px 36px rgba(6, 8, 26, 0.35);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+  backdrop-filter: blur(12px);
   width: 100%;
   max-width: none;
-  align-self: stretch;
   margin: 0;
+  height: 44px;
 }
 
 .search-bar svg {
@@ -867,13 +867,12 @@
   flex: 1;
   background: transparent;
   border: none;
-  outline: none;
   color: #fff;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  margin: 0;
   line-height: normal;
-  vertical-align: middle;
+  margin: 0;
+  outline: none;
 }
 
 .search-bar input::placeholder {
@@ -881,9 +880,8 @@
 }
 
 .search-bar:focus-within {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 18px 32px rgba(4, 6, 18, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 20px 40px rgba(4, 6, 18, 0.45);
 }
 
 .search-bar.searching {
@@ -911,46 +909,57 @@
 
 .search-source {
   position: relative;
+  display: flex;
+  align-items: center;
+  height: 44px;
   flex-shrink: 0;
 }
 
 .search-source-select {
   appearance: none;
   -webkit-appearance: none;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: none;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 0 36px 0 14px;
   border-radius: 18px;
-  color: #fff;
-  font-weight: 600;
-  padding: 0.95rem 2.6rem 0.95rem 1.1rem;
+  font-size: 0.95rem;
+  font-family: 'SF Pro Display', 'PingFang SC', sans-serif;
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 16px 36px rgba(6, 8, 26, 0.32);
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  min-width: 110px;
-  backdrop-filter: blur(4px);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.search-source-select:hover {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 18px 40px rgba(6, 8, 26, 0.38);
 }
 
 .search-source-select:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 18px 32px rgba(4, 6, 18, 0.45);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 8px var(--accent-color), inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 22px 46px rgba(4, 6, 18, 0.5);
 }
 
 .search-source-caret {
   position: absolute;
-  pointer-events: none;
-  right: 1.1rem;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
-  width: 0.65rem;
-  height: 0.4rem;
-  background: transparent;
-  border-left: 0.4rem solid transparent;
-  border-right: 0.4rem solid transparent;
-  border-top: 0.45rem solid rgba(255, 255, 255, 0.7);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  transition: border-top-color 0.3s ease;
+}
+
+.search-source-select:hover + .search-source-caret {
+  border-top-color: white;
 }
 
 .search-load-more {
@@ -1801,4 +1810,112 @@ input[type='range']::-moz-range-track {
     width: 64px;
     height: 64px;
   }
+}
+
+/* ===========================
+   🎨 滚动条全局美化
+=========================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Firefox 支持 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* ===========================
+   🎵 搜索结果下拉框优化
+=========================== */
+.search-results,
+.list-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+}
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ===========================
+   🎧 音源选择下拉菜单样式
+=========================== */
+.search-source-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 0 36px 0 14px;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  font-family: 'SF Pro Display', 'PingFang SC', sans-serif;
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 16px 36px rgba(6, 8, 26, 0.32);
+  cursor: pointer;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.search-source-select:hover {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 18px 40px rgba(6, 8, 26, 0.38);
+}
+
+.search-source-select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 8px var(--accent-color), inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 22px 46px rgba(4, 6, 18, 0.5);
+}
+
+/* 下拉菜单选项样式 */
+.search-source-select option {
+  background: rgba(20, 18, 40, 0.9);
+  color: white;
+  border: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+/* 自定义下拉箭头 */
+.search-source-caret {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  transition: border-top-color 0.3s ease;
+}
+
+/* 鼠标悬停时箭头变亮 */
+.search-source-select:hover + .search-source-caret {
+  border-top-color: white;
 }
