@@ -9,6 +9,12 @@ import { generateAppleMusicStyleBackground } from './utils/background'
 
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE = 'netease'
+const SEARCH_PAGE_SIZE = 24
+const SOURCE_OPTIONS = [
+  { value: 'netease', label: '网易云' },
+  { value: 'kuwo', label: '酷我' },
+  { value: 'joox', label: 'JOOX' },
+]
 
 let userLyricsScrolling = false
 let programmaticLyricsScroll = false
@@ -345,6 +351,9 @@ function App() {
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [searchSource, setSearchSource] = useState(DEFAULT_SOURCE)
+  const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE_SIZE)
+  const [hasMoreResults, setHasMoreResults] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<TrackDetails | null>(null)
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -510,20 +519,26 @@ function App() {
   useEffect(() => {
     const controller = new AbortController()
     const handler = window.setTimeout(async () => {
-      if (!query.trim()) {
+      const trimmed = query.trim()
+      if (!trimmed) {
         setSearchResults([])
         setIsSearching(false)
+        setHasMoreResults(false)
+        setFailedCoverMap({})
         return
       }
 
       try {
         setIsSearching(true)
         setError(null)
-        const url = `${API_BASE}?types=search&source=${DEFAULT_SOURCE}&name=${encodeURIComponent(
-          query.trim(),
-        )}&count=24`
+        const url = `${API_BASE}?types=search&source=${searchSource}&name=${encodeURIComponent(
+          trimmed,
+        )}&count=${searchLimit}`
         const results = await fetchJson<SearchResult[]>(url, controller.signal)
-        setSearchResults(Array.isArray(results) ? results : [])
+        const parsedResults = Array.isArray(results) ? results : []
+        setSearchResults(parsedResults)
+        setHasMoreResults(parsedResults.length >= searchLimit)
+        setFailedCoverMap({})
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error(err)
@@ -538,7 +553,7 @@ function App() {
       controller.abort()
       window.clearTimeout(handler)
     }
-  }, [query])
+  }, [query, searchSource, searchLimit])
 
   const teardownAudio = useCallback(() => {
     cleanupRef.current?.()
@@ -893,6 +908,10 @@ function App() {
     [playTrack],
   )
 
+  const handleLoadMoreResults = useCallback(() => {
+    setSearchLimit((prev) => prev + SEARCH_PAGE_SIZE)
+  }, [])
+
   const handleSearchSelect = useCallback(
     async (track: SearchResult) => {
       setIsLoadingTrack(true)
@@ -941,6 +960,8 @@ function App() {
         setQuery('')
         setSearchResults([])
         setIsSearching(false)
+        setSearchLimit(SEARCH_PAGE_SIZE)
+        setHasMoreResults(false)
       }
     },
     [buildTrackDetails, playTrack],
@@ -1226,68 +1247,107 @@ function App() {
           <div className="list-stack">
             <header className="list-header">
               <div className="search-area">
-                <div
-                  className={`search-bar${isSearching ? ' searching' : ''}`}
-                  ref={searchBarRef}
-                >
-                  <SearchIcon />
-                  <input
-                    value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value)
-                    }}
-                    placeholder="搜索艺术家、歌曲或专辑"
-                    spellCheck={false}
-                  />
-                  {isSearching && <LoadingSpinner />}
-                </div>
+                <div className="search-bar-wrapper">
+                  <div
+                    className={`search-bar${isSearching ? ' searching' : ''}`}
+                    ref={searchBarRef}
+                  >
+                    <SearchIcon />
+                    <input
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value)
+                        setSearchLimit(SEARCH_PAGE_SIZE)
+                        setHasMoreResults(false)
+                      }}
+                      placeholder="搜索艺术家、歌曲或专辑"
+                      spellCheck={false}
+                    />
+                    {isSearching && <LoadingSpinner />}
+                  </div>
 
-                {showSearchDropdown && (
-                  <div className="search-dropdown" role="listbox" aria-label="搜索建议">
-                    {isSearching && <div className="search-status">正在搜索…</div>}
-                    {!isSearching && !searchResults.length && (
-                      <div className="search-status empty">没有找到相关歌曲</div>
-                    )}
-                    {searchResults.map((track) => {
-                      const trackKey = getTrackKey(track)
-                      const coverUrl = track.pic_id
-                        ? `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
-                        : ''
-                      const fallbackLetter = track.name?.trim()?.[0]?.toUpperCase() || '?'
-                      const shouldShowFallback = !coverUrl || failedCoverMap[trackKey]
-                      return (
+                  {showSearchDropdown && (
+                    <div className="search-dropdown" role="listbox" aria-label="搜索建议">
+                      {isSearching && <div className="search-status">正在搜索…</div>}
+                      {!isSearching && !searchResults.length && (
+                        <div className="search-status empty">没有找到相关歌曲</div>
+                      )}
+                      {searchResults.map((track) => {
+                        const trackKey = getTrackKey(track)
+                        const coverUrl = track.pic_id
+                          ? `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
+                          : ''
+                        const fallbackLetter = track.name?.trim()?.[0]?.toUpperCase() || '?'
+                        const shouldShowFallback = !coverUrl || failedCoverMap[trackKey]
+                        return (
+                          <button
+                            type="button"
+                            key={trackKey}
+                            className="search-result"
+                            role="option"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handleSearchSelect(track)}
+                          >
+                            <span className="search-result-thumb" aria-hidden="true">
+                              {shouldShowFallback ? (
+                                <div className="cover-fallback">{fallbackLetter}</div>
+                              ) : (
+                                <img
+                                  src={coverUrl}
+                                  alt={track.name}
+                                  className="cover-image"
+                                  loading="lazy"
+                                  onError={() => {
+                                    setFailedCoverMap((prev) => ({ ...prev, [trackKey]: true }))
+                                  }}
+                                />
+                              )}
+                            </span>
+                            <span className="search-result-meta">
+                              <span className="search-result-title">{track.name}</span>
+                              <span className="search-result-artist">{track.artist.join('、')}</span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                      {!isSearching && hasMoreResults && searchResults.length > 0 && (
                         <button
                           type="button"
-                          key={trackKey}
-                          className="search-result"
-                          role="option"
+                          className="search-load-more"
                           onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => handleSearchSelect(track)}
+                          onClick={handleLoadMoreResults}
                         >
-                          <span className="search-result-thumb" aria-hidden="true">
-                            {shouldShowFallback ? (
-                              <div className="cover-fallback">{fallbackLetter}</div>
-                            ) : (
-                              <img
-                                src={coverUrl}
-                                alt={track.name}
-                                className="cover-image"
-                                loading="lazy"
-                                onError={() => {
-                                  setFailedCoverMap((prev) => ({ ...prev, [trackKey]: true }))
-                                }}
-                              />
-                            )}
-                          </span>
-                          <span className="search-result-meta">
-                            <span className="search-result-title">{track.name}</span>
-                            <span className="search-result-artist">{track.artist.join('、')}</span>
-                          </span>
+                          加载更多
                         </button>
-                      )
-                    })}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
+                <label className="search-source">
+                  <span className="sr-only">选择音源</span>
+                  <select
+                    className="search-source-select"
+                    value={searchSource}
+                    onChange={(event) => {
+                      const nextSource = event.target.value
+                      setSearchSource(nextSource)
+                      setSearchLimit(SEARCH_PAGE_SIZE)
+                      setHasMoreResults(false)
+                      setSearchResults([])
+                      setFailedCoverMap({})
+                      if (query.trim()) {
+                        setIsSearching(true)
+                      }
+                    }}
+                  >
+                    {SOURCE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="search-source-caret" aria-hidden="true" />
+                </label>
               </div>
 
             </header>
