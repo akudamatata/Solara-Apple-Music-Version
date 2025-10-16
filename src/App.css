@@ -23,6 +23,7 @@
   --space-stack-md: clamp(0.95rem, 1.9vw, 1.3rem);
   --space-stack-lg: clamp(1.2rem, 2.4vw, 1.6rem);
   --search-bar-height: 340px;
+  --side-gap: clamp(2rem, 4vw, 56px);
 }
 
 .app {
@@ -83,14 +84,14 @@
 
 .header-title {
   position: absolute;
-  top: 32px;
-  left: 40px;
+  top: clamp(1rem, 2vh, 24px);
+  left: clamp(1.5rem, 3vw, 48px);
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 700;
-  font-size: 1.4rem;
+  font-weight: 600;
+  font-size: 1rem;
   letter-spacing: -0.02em;
   color: rgba(255, 255, 255, 0.95);
-  z-index: 6;
+  z-index: 20;
   pointer-events: none;
   margin: 0;
 }
@@ -171,7 +172,9 @@
   min-height: 100dvh;
   width: 100%;
   margin-inline: 0;
+  margin-top: 0;
   margin-bottom: 0;
+  padding-top: clamp(2rem, 3vh, 32px);
   padding-bottom: 0;
   box-sizing: border-box;
   overflow: hidden;
@@ -250,20 +253,16 @@
   align-items: center;
   grid-column: content-start / content-end;
   width: 100%;
+  max-width: 680px;
+  aspect-ratio: 1 / 1;
   margin: 0 auto;
   padding: 0;
-  max-width: min(100%, var(--progress-width));
-  aspect-ratio: 1 / 1;
 }
 
 .album-art {
   width: 100%;
   height: 100%;
   aspect-ratio: 1 / 1;
-  max-width: var(--progress-width);
-  max-height: var(--progress-width);
-  min-width: 240px;
-  min-height: 240px;
   background-size: cover;
   background-position: center;
   border-radius: 16px;
@@ -295,8 +294,7 @@
 .album-placeholder {
   width: 100%;
   height: 100%;
-  max-width: var(--album-width);
-  max-height: var(--album-width);
+  aspect-ratio: 1 / 1;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
@@ -340,7 +338,8 @@
   display: grid;
   row-gap: clamp(0.5rem, 1vw, 0.75rem);
   grid-column: content-start / content-end;
-  width: min(100%, var(--progress-width));
+  width: 100%;
+  max-width: 680px;
   justify-self: center;
 }
 
@@ -371,8 +370,8 @@
   display: grid;
   row-gap: clamp(0.6rem, 1.2vw, 0.85rem);
   width: 100%;
-  max-width: var(--progress-width);
-  margin: 1.5rem auto 0;
+  max-width: 680px;
+  margin: 1rem auto 0;
   justify-self: center;
 }
 
@@ -409,8 +408,9 @@
   grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
   align-items: center;
   column-gap: clamp(0.8rem, 1.6vw, 1.1rem);
-  margin-top: 0;
-  width: min(100%, var(--progress-width));
+  width: 100%;
+  max-width: 680px;
+  margin: 1rem auto 0;
   justify-self: center;
 }
 
@@ -571,7 +571,7 @@
 
 .bottom-right {
   position: absolute;
-  right: clamp(1.2rem, 2vw, 32px);
+  right: var(--side-gap);
   bottom: clamp(1.2rem, 2vw, 32px);
   display: flex;
   gap: 1rem;
@@ -627,8 +627,9 @@
   column-gap: clamp(0.8rem, 1.6vw, 1.1rem);
   color: rgba(255, 255, 255, 0.7);
   padding-bottom: clamp(0.8rem, 2.4vh, 1.3rem);
-  margin-top: 0;
-  width: min(100%, var(--progress-width));
+  width: 100%;
+  max-width: 680px;
+  margin: 1rem auto 0;
   justify-self: center;
 }
 
@@ -769,10 +770,10 @@
 
 .search-area {
   position: relative;
-  width: calc(100% - clamp(1.2rem, 2vw, 32px));
+  width: calc(100% - var(--side-gap));
   align-self: flex-start;
   margin-top: 0;
-  margin-right: clamp(1.2rem, 2vw, 32px);
+  margin-right: var(--side-gap);
 }
 
 .search-bar {
@@ -789,7 +790,7 @@
   max-width: none;
   align-self: stretch;
   margin: 0;
-  margin-right: clamp(1.2rem, 2vw, 32px);
+  margin-right: var(--side-gap);
 }
 
 .search-bar svg {
@@ -1634,7 +1635,7 @@ input[type='range']::-moz-range-track {
   .player-cover {
     min-width: 0;
     min-height: 0;
-    max-width: min(100%, var(--progress-width));
+    max-width: min(100%, 680px);
   }
 
   .bottom-right {
