@@ -633,6 +633,7 @@
   display: flex;
   gap: 1rem;
   z-index: 99;
+  transform: translateX(-51.17px);
 }
 
 .bottom-right button {
