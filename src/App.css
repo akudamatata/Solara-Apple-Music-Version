@@ -1802,3 +1802,103 @@ input[type='range']::-moz-range-track {
     height: 64px;
   }
 }
+
+/* ===========================
+   🎨 滚动条全局美化
+=========================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Firefox 支持 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* ===========================
+   🎵 搜索结果下拉框优化
+=========================== */
+.search-results,
+.list-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+}
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ===========================
+   🎧 音源选择下拉菜单样式
+=========================== */
+.search-source-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 6px 32px 6px 12px;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
+  transition: background 0.3s ease, border 0.3s ease;
+}
+
+.search-source-select:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.search-source-select:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 8px var(--accent-strong);
+}
+
+/* 下拉菜单选项样式 */
+.search-source-select option {
+  background: rgba(20, 18, 40, 0.9);
+  color: white;
+  border: none;
+}
+
+/* 自定义下拉箭头 */
+.search-source-caret {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+/* 鼠标悬停时箭头变亮 */
+.search-source-select:hover + .search-source-caret {
+  border-top-color: white;
+}
