@@ -12,134 +12,6 @@ import { generateAppleMusicStyleBackground } from './utils/background'
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
 const DEFAULT_SOURCE: SourceValue = 'netease'
 const SEARCH_PAGE_SIZE = 24
-let userLyricsScrolling = false
-let programmaticLyricsScroll = false
-let resumeLyricsTimer: number | null = null
-let releaseProgrammaticScrollTimer: number | null = null
-
-function getVisibleLyricsContainer(): HTMLElement | null {
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>('.lyrics-view'))
-  return candidates.find((el) => el.offsetParent !== null) || null
-}
-
-function getActiveLyric(container: HTMLElement): HTMLElement | null {
-  return (
-    container.querySelector<HTMLElement>('.lyrics-line.current') ||
-    container.querySelector<HTMLElement>('.lyrics-line.active')
-  )
-}
-
-function scrollActiveLyricToCenter(
-  container: HTMLElement | null,
-  active: HTMLElement | null,
-  smooth = true,
-) {
-  if (!container || !active) {
-    return
-  }
-
-  requestAnimationFrame(() => {
-    if (!container || !active || !container.isConnected || !active.isConnected) {
-      return
-    }
-
-    const containerRect = container.getBoundingClientRect()
-    const activeRect = active.getBoundingClientRect()
-    const offset =
-      activeRect.top +
-      activeRect.height / 2 -
-      (containerRect.top + containerRect.height / 2)
-
-    if (Math.abs(offset) < 0.5) {
-      return
-    }
-
-    programmaticLyricsScroll = true
-    if (releaseProgrammaticScrollTimer !== null) {
-      window.clearTimeout(releaseProgrammaticScrollTimer)
-      releaseProgrammaticScrollTimer = null
-    }
-
-    container.scrollBy({
-      top: offset,
-      behavior: smooth ? 'smooth' : 'auto',
-    })
-
-    const releaseDelay = smooth ? 650 : 150
-    releaseProgrammaticScrollTimer = window.setTimeout(() => {
-      programmaticLyricsScroll = false
-      releaseProgrammaticScrollTimer = null
-    }, releaseDelay)
-  })
-}
-
-function onLyricLineChange() {
-  if (userLyricsScrolling) {
-    return
-  }
-
-  const container = getVisibleLyricsContainer()
-  if (!container) {
-    return
-  }
-
-  const active = getActiveLyric(container)
-  if (active) {
-    scrollActiveLyricToCenter(container, active, true)
-  }
-}
-
-function attachLyricsScrollGuards(container: HTMLElement) {
-  const onUserScroll = () => {
-    if (programmaticLyricsScroll) {
-      return
-    }
-
-    userLyricsScrolling = true
-    if (resumeLyricsTimer !== null) {
-      window.clearTimeout(resumeLyricsTimer)
-    }
-    resumeLyricsTimer = window.setTimeout(() => {
-      userLyricsScrolling = false
-      const currentContainer = getVisibleLyricsContainer()
-      if (!currentContainer) {
-        return
-      }
-      const active = getActiveLyric(currentContainer)
-      if (active) {
-        scrollActiveLyricToCenter(currentContainer, active, true)
-      }
-    }, 3500)
-  }
-
-  container.addEventListener('wheel', onUserScroll, { passive: true })
-  container.addEventListener('touchmove', onUserScroll, { passive: true })
-  container.addEventListener('scroll', onUserScroll, { passive: true })
-
-  return () => {
-    container.removeEventListener('wheel', onUserScroll)
-    container.removeEventListener('touchmove', onUserScroll)
-    container.removeEventListener('scroll', onUserScroll)
-    if (resumeLyricsTimer !== null) {
-      window.clearTimeout(resumeLyricsTimer)
-      resumeLyricsTimer = null
-    }
-  }
-}
-
-function resetLyricsScrollState() {
-  userLyricsScrolling = false
-  programmaticLyricsScroll = false
-  if (resumeLyricsTimer !== null) {
-    window.clearTimeout(resumeLyricsTimer)
-    resumeLyricsTimer = null
-  }
-  if (releaseProgrammaticScrollTimer !== null) {
-    window.clearTimeout(releaseProgrammaticScrollTimer)
-    releaseProgrammaticScrollTimer = null
-  }
-}
-
 const getTrackKey = (track: { id: string | number; source?: string }) => {
   const source = track.source || DEFAULT_SOURCE
   return `${track.id}-${source}`
@@ -380,13 +252,7 @@ function App() {
   const shuffleHistoryRef = useRef<string[]>([])
   const shuffleEnabledRef = useRef(isShuffle)
   const repeatModeRef = useRef(repeatMode)
-  const lyricsContainerRef = useRef<HTMLDivElement | null>(null)
-  const lyricsScrollCleanupRef = useRef<(() => void) | null>(null)
   const searchBarRef = useRef<HTMLDivElement | null>(null)
-
-  const handleLyricLineChange = useCallback(() => {
-    onLyricLineChange()
-  }, [])
 
   useEffect(() => {
     currentTrackRef.current = currentTrack
@@ -749,63 +615,6 @@ function App() {
     }
   }, [teardownAudio])
 
-  useEffect(() => {
-    handleLyricLineChange()
-  }, [activeLyricIndex, handleLyricLineChange])
-
-  useEffect(() => {
-    const container = getVisibleLyricsContainer()
-    const htmlContainer = (container as HTMLDivElement | null) ?? null
-    lyricsContainerRef.current = htmlContainer
-
-    if (!container) {
-      resetLyricsScrollState()
-      lyricsScrollCleanupRef.current = null
-      return () => {
-        if (lyricsScrollCleanupRef.current) {
-          lyricsScrollCleanupRef.current()
-          lyricsScrollCleanupRef.current = null
-        }
-      }
-    }
-
-    resetLyricsScrollState()
-    const active = getActiveLyric(container)
-    let initialScrollFrame: number | null = null
-    if (active) {
-      initialScrollFrame = window.requestAnimationFrame(() => {
-        scrollActiveLyricToCenter(container, active, false)
-      })
-    }
-
-    const cleanup = attachLyricsScrollGuards(container)
-    lyricsScrollCleanupRef.current = cleanup
-
-    return () => {
-      if (initialScrollFrame !== null) {
-        window.cancelAnimationFrame(initialScrollFrame)
-      }
-      cleanup()
-      if (lyricsScrollCleanupRef.current === cleanup) {
-        lyricsScrollCleanupRef.current = null
-      }
-      if (lyricsContainerRef.current === htmlContainer) {
-        lyricsContainerRef.current = null
-      }
-    }
-  }, [activePanel, currentTrack, currentTrackId])
-
-  useEffect(() => {
-    return () => {
-      if (lyricsScrollCleanupRef.current) {
-        lyricsScrollCleanupRef.current()
-        lyricsScrollCleanupRef.current = null
-      }
-      resetLyricsScrollState()
-      lyricsContainerRef.current = null
-    }
-  }, [])
-
   const backgroundStyle = useMemo<CSSProperties>(
     () =>
       ({
@@ -1051,20 +860,10 @@ function App() {
       return <p className="lyrics-placeholder">暂无歌词信息</p>
     }
 
-    const visibleLyricLines =
-      activeLyricIndex >= 0
-        ? currentTrack.lyrics.slice(0, activeLyricIndex + 1)
-        : currentTrack.lyrics.slice(0, Math.min(3, currentTrack.lyrics.length))
+    const lyricLines = currentTrack.lyrics
+    const clampedIndex = Math.min(Math.max(activeLyricIndex, -1), lyricLines.length - 1)
 
-    return (
-      <Lyrics
-        lyrics={visibleLyricLines.map((line) => ({
-          text: line.text,
-          translation: line.translation,
-        }))}
-        className="mx-auto max-w-2xl"
-      />
-    )
+    return <Lyrics lyrics={lyricLines} currentIndex={clampedIndex} className="mx-auto max-w-2xl" />
   }, [currentTrack, activeLyricIndex])
 
   const isBusy = isBuffering || isLoadingTrack
@@ -1400,7 +1199,7 @@ function App() {
                     <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
                     {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
                   </header>
-                  <div className="lyrics-view" ref={lyricsContainerRef}>
+                  <div className="lyrics-view">
                     <div className="lyrics-content">{lyricsContent}</div>
                   </div>
                 </div>
