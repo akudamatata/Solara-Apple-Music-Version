@@ -1391,7 +1391,6 @@ function App() {
               ) : (
                 <div className="lyrics-panel">
                   <header className="lyrics-header">
-                    <span className="eyebrow">歌词</span>
                     <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
                     {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
                   </header>

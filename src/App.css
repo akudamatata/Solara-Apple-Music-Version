@@ -628,7 +628,7 @@
 
 .bottom-right {
   position: absolute;
-  right: var(--page-gutter);
+  right: calc(var(--page-gutter) + 12px);
   bottom: clamp(16px, 2vh, 28px);
   display: flex;
   gap: 1rem;
