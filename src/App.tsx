@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import type { CSSProperties } from 'react'
 import './App.css'
+import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
 import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
@@ -8,14 +9,8 @@ import type { BackgroundPalette } from './utils/palette'
 import { generateAppleMusicStyleBackground } from './utils/background'
 
 const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
-const DEFAULT_SOURCE = 'netease'
+const DEFAULT_SOURCE: SourceValue = 'netease'
 const SEARCH_PAGE_SIZE = 24
-const SOURCE_OPTIONS = [
-  { value: 'netease', label: '网易云' },
-  { value: 'kuwo', label: '酷我' },
-  { value: 'joox', label: 'JOOX' },
-]
-
 let userLyricsScrolling = false
 let programmaticLyricsScroll = false
 let resumeLyricsTimer: number | null = null
@@ -351,7 +346,7 @@ function App() {
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [searchSource, setSearchSource] = useState(DEFAULT_SOURCE)
+  const [searchSource, setSearchSource] = useState<SourceValue>(DEFAULT_SOURCE)
   const [searchLimit, setSearchLimit] = useState(SEARCH_PAGE_SIZE)
   const [hasMoreResults, setHasMoreResults] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<TrackDetails | null>(null)
@@ -1323,31 +1318,19 @@ function App() {
                     </div>
                   )}
                 </div>
-                <label className="search-source">
-                  <span className="sr-only">选择音源</span>
-                  <select
-                    className="search-source-select"
-                    value={searchSource}
-                    onChange={(event) => {
-                      const nextSource = event.target.value
-                      setSearchSource(nextSource)
-                      setSearchLimit(SEARCH_PAGE_SIZE)
-                      setHasMoreResults(false)
-                      setSearchResults([])
-                      setFailedCoverMap({})
-                      if (query.trim()) {
-                        setIsSearching(true)
-                      }
-                    }}
-                  >
-                    {SOURCE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="search-source-caret" aria-hidden="true" />
-                </label>
+                <SourceDropdown
+                  value={searchSource}
+                  onChange={(nextSource) => {
+                    setSearchSource(nextSource)
+                    setSearchLimit(SEARCH_PAGE_SIZE)
+                    setHasMoreResults(false)
+                    setSearchResults([])
+                    setFailedCoverMap({})
+                    if (query.trim()) {
+                      setIsSearching(true)
+                    }
+                  }}
+                />
               </div>
 
             </header>
