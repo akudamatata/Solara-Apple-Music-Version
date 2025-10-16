@@ -25,6 +25,7 @@
   --search-bar-height: 340px;
   --stack-gap-tight: clamp(8px, 1.2vh, 14px);
   --stack-gap-xs: clamp(6px, 0.8vh, 10px);
+  --page-gutter: clamp(24px, 3vw, 48px);
 }
 
 .app {
@@ -86,17 +87,18 @@
 }
 
 .header-title {
-  position: static;
-  margin-left: clamp(1.5rem, 3vw, 48px);
+  position: absolute;
+  top: clamp(12px, 2vh, 24px);
+  left: var(--page-gutter);
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 700;
-  font-size: clamp(1rem, 2vw + 0.5rem, 1.8rem);
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1;
   letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.95);
   z-index: 20;
   pointer-events: none;
   margin: 0;
-  margin-bottom: clamp(1rem, 3vh, 40px);
 }
 
 .sr-only {
@@ -169,11 +171,12 @@
   margin: 0 auto;
   box-sizing: border-box;
   --layout-content-width: 100%;
-  --layout-horizontal-padding: clamp(1.5rem, 3vw, 48px);
   --layout-bottom-padding: clamp(1rem, 3vh, 2.4rem);
   --panel-padding: clamp(2.2rem, 4.4vw, 3.2rem);
   --panel-padding-inline: clamp(2.6rem, 5vw, 4rem);
-  padding: 0 var(--layout-horizontal-padding) var(--layout-bottom-padding);
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+  padding-bottom: var(--layout-bottom-padding);
   margin-top: 0;
   padding-top: 0;
   min-height: 100vh;
@@ -247,6 +250,11 @@
   overflow: visible !important;
   height: auto;
   flex-shrink: 0;
+  margin-left: 0;
+}
+
+.album-section:not(.left-pane) {
+  margin-left: var(--page-gutter);
 }
 
 .album-section,
@@ -260,6 +268,7 @@
 .left-pane {
   overflow-x: hidden;
   margin-top: 0;
+  padding-left: var(--page-gutter);
 }
 
 .player-cover {
@@ -599,8 +608,8 @@
 
 .bottom-right {
   position: absolute;
-  right: clamp(2rem, 4vw, 56px);
-  bottom: clamp(1rem, 2vw, 32px);
+  right: var(--page-gutter);
+  bottom: clamp(16px, 2vh, 28px);
   display: flex;
   gap: 1rem;
   z-index: 99;
@@ -797,10 +806,10 @@
 
 .search-area {
   position: relative;
-  width: calc(100% - clamp(2rem, 4vw, 56px));
+  width: calc(100% - var(--page-gutter));
   align-self: flex-start;
   margin-top: 0;
-  margin-right: clamp(2rem, 4vw, 56px);
+  margin-right: var(--page-gutter);
 }
 
 .search-bar {
@@ -817,7 +826,7 @@
   max-width: none;
   align-self: stretch;
   margin: 0;
-  margin-right: clamp(2rem, 4vw, 56px);
+  margin-right: var(--page-gutter);
 }
 
 .search-bar svg {
