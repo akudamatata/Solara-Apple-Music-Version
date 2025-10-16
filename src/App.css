@@ -35,6 +35,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  padding-top: clamp(1rem, 3vh, 32px);
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
   font-feature-settings: 'liga', 'kern';
@@ -82,9 +84,8 @@
 }
 
 .header-title {
-  position: absolute;
-  top: clamp(1rem, 2vh, 24px);
-  left: clamp(1.5rem, 3vw, 48px);
+  position: static;
+  margin-left: clamp(1.5rem, 3vw, 48px);
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 700;
   font-size: clamp(1rem, 2vw + 0.5rem, 1.8rem);
@@ -93,6 +94,7 @@
   z-index: 20;
   pointer-events: none;
   margin: 0;
+  margin-bottom: clamp(1rem, 3vh, 40px);
 }
 
 .sr-only {
@@ -169,7 +171,9 @@
   --layout-bottom-padding: clamp(1rem, 3vh, 2.4rem);
   --panel-padding: clamp(2.2rem, 4.4vw, 3.2rem);
   --panel-padding-inline: clamp(2.6rem, 5vw, 4rem);
-  padding: var(--layout-top-baseline) var(--layout-horizontal-padding) var(--layout-bottom-padding);
+  padding: 0 var(--layout-horizontal-padding) var(--layout-bottom-padding);
+  margin-top: 0;
+  padding-top: 0;
   min-height: 100vh;
   min-height: 100svh;
   min-height: 100dvh;
@@ -198,6 +202,8 @@
   justify-content: flex-start;
   max-height: none;
   height: auto;
+  margin-top: 0;
+  padding-top: 0;
   margin-bottom: 0;
   padding-bottom: 0;
 }
@@ -210,6 +216,8 @@
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+  margin-top: 0;
+  padding-top: 0;
   margin-bottom: 0;
   padding-bottom: 0;
 }
