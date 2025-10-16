@@ -26,11 +26,12 @@
   --search-bar-height: 340px;
   --stack-gap-tight: clamp(8px, 1.2vh, 14px);
   --stack-gap-xs: clamp(6px, 0.8vh, 10px);
+  /* 页面整体边距 */
   --page-gutter: clamp(24px, 3vw, 48px);
-  --left-vertical-padding: clamp(48px, 8vh, 96px);
-  --top-align-offset: clamp(48px, 8vh, 96px);
-  /* 右列顶部微调量：数值越小越靠上，可按需要再减 */
-  --right-top-offset: clamp(12px, 1.8vh, 24px);
+  /* 左侧上下留白，保证对称 */
+  --left-vertical-padding: clamp(48px, 7vh, 96px);
+  /* 顶部 LOGO 与主要内容的垂直间距 */
+  --top-offset: clamp(60px, 8vh, 100px);
 }
 
 .app {
@@ -95,15 +96,15 @@
   position: absolute;
   top: var(--page-gutter);
   left: var(--page-gutter);
+  margin: 0;
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 700;
-  font-size: clamp(18px, 2vw, 24px);
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
   line-height: 1;
   letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.95);
   z-index: 20;
   pointer-events: none;
-  margin: 0;
 }
 
 .sr-only {
@@ -166,10 +167,10 @@
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: 40% 60%;
+  grid-template-columns: 42% 58%;
   column-gap: clamp(24px, 4vw, 60px);
   row-gap: clamp(1.8rem, 3.5vw, 2.6rem);
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   justify-items: stretch;
   width: 100%;
@@ -182,9 +183,9 @@
   --panel-padding-inline: clamp(2.6rem, 5vw, 4rem);
   padding-left: var(--page-gutter);
   padding-right: var(--page-gutter);
-  padding-bottom: var(--layout-bottom-padding);
+  padding-top: var(--page-gutter);
+  padding-bottom: var(--page-gutter);
   margin-top: 0;
-  padding-top: 0;
   height: 100vh;
   min-height: 100vh;
   min-height: 100svh;
@@ -228,7 +229,7 @@
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  margin-top: var(--right-top-offset);
+  margin-top: var(--top-offset);
   padding-top: 0;
   margin-bottom: 0;
   padding-bottom: 0;
@@ -241,7 +242,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   gap: var(--stack-gap-tight);
   width: 100%;
