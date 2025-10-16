@@ -27,6 +27,7 @@
   --stack-gap-tight: clamp(8px, 1.2vh, 14px);
   --stack-gap-xs: clamp(6px, 0.8vh, 10px);
   --page-gutter: clamp(24px, 3vw, 48px);
+  --left-vertical-padding: clamp(48px, 8vh, 96px);
   --top-align-offset: clamp(48px, 8vh, 96px);
   /* 右列顶部微调量：数值越小越靠上，可按需要再减 */
   --right-top-offset: clamp(12px, 1.8vh, 24px);
@@ -92,7 +93,7 @@
 
 .header-title {
   position: absolute;
-  top: clamp(16px, 2vh, 28px);
+  top: var(--page-gutter);
   left: var(--page-gutter);
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 700;
@@ -168,7 +169,7 @@
   grid-template-columns: 40% 60%;
   column-gap: clamp(24px, 4vw, 60px);
   row-gap: clamp(1.8rem, 3.5vw, 2.6rem);
-  align-items: stretch;
+  align-items: center;
   justify-content: space-between;
   justify-items: stretch;
   width: 100%;
@@ -182,8 +183,9 @@
   padding-left: var(--page-gutter);
   padding-right: var(--page-gutter);
   padding-bottom: var(--layout-bottom-padding);
-  margin-top: var(--top-align-offset);
+  margin-top: 0;
   padding-top: 0;
+  height: 100vh;
   min-height: 100vh;
   min-height: 100svh;
   min-height: 100dvh;
@@ -239,12 +241,14 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   gap: var(--stack-gap-tight);
   width: 100%;
   margin: 0;
   padding: 0;
+  padding-top: var(--left-vertical-padding);
+  padding-bottom: var(--left-vertical-padding);
   box-sizing: border-box;
   height: auto;
   overflow: visible;
@@ -285,6 +289,7 @@
   align-items: center;
   width: 100%;
   margin: 0 auto;
+  margin-top: clamp(12px, 2vh, 24px);
   padding: 0;
   max-width: var(--progress-width);
   aspect-ratio: 1 / 1;
