@@ -6,19 +6,28 @@ export interface LyricLineProps {
   delay?: number
   children?: ReactNode
   className?: string
+  animate?: boolean
 }
 
-const LyricLine = ({ text, delay = 0, className, children }: LyricLineProps) => {
+const LyricLine = ({ text, delay = 0, className, children, animate = false }: LyricLineProps) => {
   const combinedClassName = ['lyrics-line text-white/80', className]
     .filter(Boolean)
     .join(' ')
 
+  if (!animate) {
+    return (
+      <div className={combinedClassName}>
+        <span className="lyrics-text whitespace-pre-line">{text}</span>
+        {children}
+      </div>
+    )
+  }
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 1.5, delay }}
+      transition={{ duration: 0.8, delay }}
       className={combinedClassName}
     >
       <span className="lyrics-text whitespace-pre-line">{text}</span>
