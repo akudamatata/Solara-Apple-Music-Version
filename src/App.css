@@ -23,6 +23,8 @@
   --space-stack-md: clamp(0.95rem, 1.9vw, 1.3rem);
   --space-stack-lg: clamp(1.2rem, 2.4vw, 1.6rem);
   --search-bar-height: 340px;
+  --stack-gap-tight: clamp(8px, 1.2vh, 14px);
+  --stack-gap-xs: clamp(6px, 0.8vh, 10px);
 }
 
 .app {
@@ -228,10 +230,10 @@
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  gap: clamp(1.6rem, 3vh, 2.4rem);
+  gap: var(--stack-gap-tight);
   width: 100%;
   margin: 0;
-  padding: 0 0 clamp(1.6rem, 3vh, 2.6rem);
+  padding: 0;
   box-sizing: border-box;
   height: auto;
   overflow: visible;
@@ -241,10 +243,18 @@
 }
 
 .album-section {
-  row-gap: clamp(2rem, 4vh, 3rem);
+  row-gap: var(--stack-gap-tight);
   overflow: visible !important;
   height: auto;
   flex-shrink: 0;
+}
+
+.album-section,
+.playback-panel {
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .left-pane {
@@ -261,6 +271,7 @@
   padding: 0;
   max-width: var(--progress-width);
   aspect-ratio: 1 / 1;
+  margin-bottom: var(--stack-gap-tight);
 }
 
 .album-art {
@@ -345,9 +356,10 @@
   margin: 0;
   text-align: left;
   display: grid;
-  row-gap: clamp(0.5rem, 1vw, 0.75rem);
+  gap: var(--stack-gap-xs);
   grid-column: content-start / content-end;
-  width: min(100%, var(--progress-width));
+  width: 100%;
+  max-width: min(var(--progress-width), 600px);
   justify-self: center;
 }
 
@@ -359,11 +371,21 @@
   text-shadow: 0 18px 32px rgba(0, 0, 0, 0.4);
 }
 
+.player-track-meta .track-title {
+  margin: 0 0 var(--stack-gap-xs) 0;
+  line-height: 1.2;
+}
+
 .player-artist {
   margin: 0;
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.8);
   text-align: left;
+}
+
+.player-track-meta .track-artist {
+  margin: 0;
+  opacity: 0.9;
 }
 
 .eyebrow {
@@ -375,10 +397,10 @@
 
 .player-progress {
   display: grid;
-  row-gap: clamp(0.6rem, 1.2vw, 0.85rem);
+  gap: var(--stack-gap-xs);
   width: 100%;
-  max-width: var(--progress-width);
-  margin: 1rem auto 0;
+  max-width: min(var(--progress-width), 600px);
+  margin: 0;
 }
 
 .player-progress .progress {
@@ -393,7 +415,7 @@
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.78);
-  margin-top: calc(var(--space-stack-xs) * -0.35);
+  margin-top: var(--stack-gap-xs);
 }
 
 .time-row span {
@@ -412,10 +434,12 @@
   display: grid;
   grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
   align-items: center;
+  gap: var(--stack-gap-xs);
   column-gap: clamp(0.8rem, 1.6vw, 1.1rem);
-  margin: 1rem auto 0;
+  margin: 0;
+  padding: 0;
   width: 100%;
-  max-width: var(--progress-width);
+  max-width: min(var(--progress-width), 600px);
 }
 
 .player-controls .shuffle {
@@ -430,7 +454,7 @@
   justify-self: center;
   display: inline-grid;
   grid-auto-flow: column;
-  column-gap: var(--space-stack-sm);
+  gap: clamp(8px, 1vw, 12px);
   align-items: center;
 }
 
@@ -627,12 +651,13 @@
   display: grid;
   grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
   align-items: center;
+  gap: var(--stack-gap-xs);
   column-gap: clamp(0.8rem, 1.6vw, 1.1rem);
   color: rgba(255, 255, 255, 0.7);
-  padding-bottom: clamp(0.8rem, 2.4vh, 1.3rem);
-  margin: 1rem auto 0;
+  margin: 0;
+  padding: 0;
   width: 100%;
-  max-width: var(--progress-width);
+  max-width: min(var(--progress-width), 600px);
 }
 
 .volume-slider {
@@ -1648,10 +1673,6 @@ input[type='range']::-moz-range-track {
 }
 
 @media (max-width: 620px) {
-  .player-stage {
-    row-gap: var(--space-stack-md);
-  }
-
   .player-controls {
     column-gap: clamp(0.6rem, 4vw, 1rem);
   }
