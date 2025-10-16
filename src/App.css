@@ -26,6 +26,7 @@
   --stack-gap-tight: clamp(8px, 1.2vh, 14px);
   --stack-gap-xs: clamp(6px, 0.8vh, 10px);
   --page-gutter: clamp(24px, 3vw, 48px);
+  --top-align-offset: clamp(48px, 8vh, 96px);
 }
 
 .app {
@@ -88,7 +89,7 @@
 
 .header-title {
   position: absolute;
-  top: clamp(12px, 2vh, 24px);
+  top: clamp(16px, 2vh, 28px);
   left: var(--page-gutter);
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 700;
@@ -161,8 +162,9 @@
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: minmax(0, 0.44fr) minmax(0, 0.56fr);
-  gap: clamp(1.8rem, 3.5vw, 2.6rem);
+  grid-template-columns: 40% 60%;
+  column-gap: clamp(24px, 4vw, 60px);
+  row-gap: clamp(1.8rem, 3.5vw, 2.6rem);
   align-items: flex-start;
   justify-content: space-between;
   justify-items: stretch;
@@ -177,7 +179,7 @@
   padding-left: var(--page-gutter);
   padding-right: var(--page-gutter);
   padding-bottom: var(--layout-bottom-padding);
-  margin-top: 0;
+  margin-top: var(--top-align-offset);
   padding-top: 0;
   min-height: 100vh;
   min-height: 100svh;
@@ -221,7 +223,7 @@
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  margin-top: 0;
+  margin-top: var(--top-align-offset);
   padding-top: 0;
   margin-bottom: 0;
   padding-bottom: 0;
