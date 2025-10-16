@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import type { CSSProperties } from 'react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
+import Lyrics from './components/Lyrics'
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
 import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
@@ -1050,15 +1051,20 @@ function App() {
       return <p className="lyrics-placeholder">暂无歌词信息</p>
     }
 
-    return currentTrack.lyrics.map((line, index) => {
-      const isActive = index === activeLyricIndex
-      return (
-        <div key={`${line.time}-${index}`} className={`lyrics-line${isActive ? ' current' : ''}`}>
-          <span className="lyrics-text">{line.text}</span>
-          {line.translation && <span className="lyrics-translation">{line.translation}</span>}
-        </div>
-      )
-    })
+    const visibleLyricLines =
+      activeLyricIndex >= 0
+        ? currentTrack.lyrics.slice(0, activeLyricIndex + 1)
+        : currentTrack.lyrics.slice(0, Math.min(3, currentTrack.lyrics.length))
+
+    return (
+      <Lyrics
+        lyrics={visibleLyricLines.map((line) => ({
+          text: line.text,
+          translation: line.translation,
+        }))}
+        className="mx-auto max-w-2xl"
+      />
+    )
   }, [currentTrack, activeLyricIndex])
 
   const isBusy = isBuffering || isLoadingTrack
