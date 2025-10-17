@@ -1368,7 +1368,8 @@
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding-right: clamp(0.45rem, 1vw, 0.9rem);
+  padding-right: var(--page-gutter);
+  box-sizing: border-box;
 }
 
 .playlist-view::-webkit-scrollbar {
@@ -1397,7 +1398,7 @@
   gap: clamp(0.75rem, 1.8vw, 1.2rem);
   align-items: center;
   height: 64px;
-  padding: 0 1.2rem;
+  padding: 0 1.2rem 0 0;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.06);
