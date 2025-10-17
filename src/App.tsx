@@ -252,6 +252,7 @@ function App() {
   const shuffleHistoryRef = useRef<string[]>([])
   const shuffleEnabledRef = useRef(isShuffle)
   const repeatModeRef = useRef(repeatMode)
+  const lyricsScrollRef = useRef<HTMLDivElement | null>(null)
   const searchBarRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -863,8 +864,15 @@ function App() {
     const lyricLines = currentTrack.lyrics
     const clampedIndex = Math.min(Math.max(activeLyricIndex, -1), lyricLines.length - 1)
 
-    return <Lyrics lyrics={lyricLines} currentIndex={clampedIndex} className="mx-auto max-w-2xl" />
-  }, [currentTrack, activeLyricIndex])
+    return (
+      <Lyrics
+        lyrics={lyricLines}
+        currentIndex={clampedIndex}
+        className="mx-auto max-w-2xl"
+        scrollContainerRef={lyricsScrollRef}
+      />
+    )
+  }, [currentTrack, activeLyricIndex, lyricsScrollRef])
 
   const isBusy = isBuffering || isLoadingTrack
 
@@ -1199,7 +1207,7 @@ function App() {
                     <h2>{currentTrack ? currentTrack.title : '准备播放'}</h2>
                     {currentTrack && <p>{currentTrack.artists} · {currentTrack.album}</p>}
                   </header>
-                  <div className="lyrics-view">
+                  <div ref={lyricsScrollRef} className="lyrics-view">
                     <div className="lyrics-content">{lyricsContent}</div>
                   </div>
                 </div>

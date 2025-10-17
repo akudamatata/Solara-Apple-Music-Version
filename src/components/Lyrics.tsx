@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type RefObject,
+} from 'react'
 import LyricLine from './LyricLine'
 
 interface LyricItem {
@@ -10,12 +18,13 @@ interface LyricsProps {
   lyrics: LyricItem[]
   currentIndex: number
   className?: string
+  scrollContainerRef?: RefObject<HTMLDivElement | null> | MutableRefObject<HTMLDivElement | null>
 }
 
 const baseContainerClass =
   'relative flex h-full w-full flex-col items-center overflow-hidden text-center'
 
-const Lyrics = ({ lyrics, currentIndex, className }: LyricsProps) => {
+const Lyrics = ({ lyrics, currentIndex, className, scrollContainerRef }: LyricsProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const lineRefs = useRef<(HTMLDivElement | null)[]>([])
   const [hasEnteredBottomZone, setHasEnteredBottomZone] = useState<Record<number, boolean>>({})
@@ -40,7 +49,7 @@ const Lyrics = ({ lyrics, currentIndex, className }: LyricsProps) => {
   }, [currentIndex])
 
   useEffect(() => {
-    const container = containerRef.current
+    const container = scrollContainerRef?.current ?? containerRef.current
     if (!container) return
 
     const observer = new IntersectionObserver(
@@ -77,10 +86,10 @@ const Lyrics = ({ lyrics, currentIndex, className }: LyricsProps) => {
     return () => {
       observer.disconnect()
     }
-  }, [lyrics])
+  }, [lyrics, scrollContainerRef])
 
   const scrollToActiveLine = useCallback(() => {
-    const container = containerRef.current
+    const container = scrollContainerRef?.current ?? containerRef.current
     if (!container) return
 
     const activeLine = lineRefs.current[currentIndex]
@@ -94,7 +103,7 @@ const Lyrics = ({ lyrics, currentIndex, className }: LyricsProps) => {
       activeOffset + container.scrollTop - containerHeight / 2 + activeLine.offsetHeight / 2
 
     container.scrollTo({ top: Math.max(target, 0), behavior: 'smooth' })
-  }, [currentIndex])
+  }, [currentIndex, scrollContainerRef])
 
   useEffect(() => {
     scrollToActiveLine()
@@ -104,11 +113,17 @@ const Lyrics = ({ lyrics, currentIndex, className }: LyricsProps) => {
     return [baseContainerClass, className].filter(Boolean).join(' ')
   }, [className])
 
+  const useExternalScroll = Boolean(scrollContainerRef)
+
   return (
     <div className={containerClassName}>
       <div
         ref={containerRef}
-        className="relative flex h-full w-full flex-1 flex-col overflow-y-auto px-6 py-12 scroll-smooth"
+        className="relative flex h-full w-full flex-1 flex-col px-6 py-12"
+        style={{
+          overflowY: useExternalScroll ? 'visible' : 'auto',
+          scrollBehavior: useExternalScroll ? undefined : 'smooth',
+        }}
       >
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-black/40 to-transparent" />
