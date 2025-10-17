@@ -1159,6 +1159,11 @@
   z-index: 100;
 }
 
+.source-dd__menu[data-align='left'] {
+  right: auto;
+  left: 0;
+}
+
 .source-dd__item {
   display: block;
   width: 100%;
@@ -1392,12 +1397,28 @@
   box-sizing: border-box;
 }
 
-.list-header {
+.playlist-view > .list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0 0.35rem 0.35rem 0;
+  width: calc(100% - var(--page-gutter));
+  margin-right: var(--page-gutter);
+  padding: 0 0 0.4rem 0;
+}
+
+.list-header__title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  letter-spacing: 0.02em;
+}
+
+.list-header__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .clear-playlist-btn {
@@ -1440,22 +1461,6 @@
 
 .playlist-view::-webkit-scrollbar {
   display: none;
-}
-
-.results-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  letter-spacing: 0.16em;
-  color: rgba(255, 255, 255, 0.58);
-  padding: 0.15rem 0 0.4rem;
-}
-
-.result-count {
-  color: rgba(255, 255, 255, 0.78);
-  font-weight: 600;
 }
 
 .track-item {
@@ -1629,6 +1634,10 @@
   gap: 0.75rem;
 }
 
+.song-actions .download-action {
+  display: inline-flex;
+}
+
 .song-actions .action-btn {
   display: inline-flex;
   align-items: center;
@@ -1659,6 +1668,52 @@
 
 .song-actions .delete-action:hover {
   color: #ff5c5c;
+}
+
+.audio-quality-dd--minimal {
+  height: auto;
+}
+
+.audio-quality-dd--minimal .source-dd__trigger {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  color: inherit;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.audio-quality-dd--minimal .source-dd__trigger:hover {
+  background: none;
+}
+
+.audio-quality-dd--minimal .source-dd__trigger:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 3px;
+}
+
+.audio-quality-dd--minimal .source-dd__menu {
+  min-width: 160px;
+}
+
+.audio-quality-dd--minimal .source-dd__item {
+  font-size: 0.88rem;
+}
+
+.song-actions .audio-quality-dd--minimal .source-dd__trigger {
+  width: 30px;
+  height: 30px;
+}
+
+.song-actions .audio-quality-dd--minimal .source-dd__trigger:hover {
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.08);
+}
+
+.song-actions .audio-quality-dd--minimal .source-dd__trigger:active {
+  transform: scale(0.94);
 }
 
 .empty-state {

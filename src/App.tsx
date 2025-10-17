@@ -17,6 +17,17 @@ const API_BASE = '/proxy'
 const KUWO_HOST_PATTERN = /(^|\.)kuwo\.cn$/i
 const DEFAULT_SOURCE: SourceValue = 'netease'
 const SEARCH_PAGE_SIZE = 24
+const SUPPORTED_AUDIO_EXTENSIONS = /\.(mp3|flac|wav|m4a|ape|aac)$/i
+const INVALID_AUDIO_SOURCE_ERROR = 'INVALID_AUDIO_SOURCE'
+
+const isSupportedAudioSource = (url: string | null | undefined) => {
+  if (!url) {
+    return false
+  }
+  const sanitized = url.split('?')[0]?.split('#')[0] ?? ''
+  return SUPPORTED_AUDIO_EXTENSIONS.test(sanitized.toLowerCase())
+}
+
 const getTrackKey = (track: { id: string | number; source?: string }) => {
   const source = track.source || DEFAULT_SOURCE
   return `${track.id}-${source}`
@@ -65,6 +76,13 @@ const STORAGE_KEYS = {
 const VALID_REPEAT_MODES = new Set<'none' | 'one' | 'all'>(['none', 'one', 'all'])
 
 const VALID_AUDIO_QUALITIES = new Set<AudioQuality>(['standard', 'high', 'very_high', 'lossless'])
+
+const AUDIO_QUALITY_TOAST_LABELS: Record<AudioQuality, string> = {
+  standard: '标准音质',
+  high: '高音质',
+  very_high: '极高音质',
+  lossless: '无损音质',
+}
 
 const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
   const response = await fetch(url, { signal })
@@ -270,6 +288,7 @@ function App() {
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('very_high')
+  const [downloadQuality, setDownloadQuality] = useState<AudioQuality>('very_high')
   const [isExploring, setIsExploring] = useState(false)
   const [isExplorePulsing, setIsExplorePulsing] = useState(false)
 
@@ -283,6 +302,9 @@ function App() {
   >(null)
   const audioSetupRef = useRef(false)
   const explorePulseTimeoutRef = useRef<number | null>(null)
+  const qualityToastEnabledRef = useRef(false)
+  const qualityToastTimerRef = useRef<number | null>(null)
+  const autoLoadGuardRef = useRef(false)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
@@ -377,6 +399,19 @@ function App() {
     if (savedQuality && VALID_AUDIO_QUALITIES.has(savedQuality as AudioQuality)) {
       setAudioQuality(savedQuality as AudioQuality)
     }
+
+    if (typeof window !== 'undefined') {
+      qualityToastTimerRef.current = window.setTimeout(() => {
+        qualityToastEnabledRef.current = true
+      }, 0)
+    }
+
+    return () => {
+      if (qualityToastTimerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(qualityToastTimerRef.current)
+        qualityToastTimerRef.current = null
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -432,6 +467,35 @@ function App() {
   }, [playlist])
 
   useEffect(() => {
+    if (!playlist.length) {
+      autoLoadGuardRef.current = false
+      return
+    }
+    if (isLoadingTrack || currentTrackRef.current) {
+      return
+    }
+    const play = playTrackRef.current
+    if (!play) {
+      return
+    }
+    const firstTrack = playlist[0]
+    if (!firstTrack) {
+      return
+    }
+    if (autoLoadGuardRef.current) {
+      return
+    }
+    autoLoadGuardRef.current = true
+    play(firstTrack, 0, false)
+      .catch((error) => {
+        console.warn('Failed to auto load first track', error)
+      })
+      .finally(() => {
+        autoLoadGuardRef.current = false
+      })
+  }, [isLoadingTrack, playlist])
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
       return
     }
@@ -482,6 +546,14 @@ function App() {
     }
 
     window.localStorage.setItem(STORAGE_KEYS.audioQuality, audioQuality)
+  }, [audioQuality])
+
+  useEffect(() => {
+    if (!qualityToastEnabledRef.current) {
+      return
+    }
+    const label = AUDIO_QUALITY_TOAST_LABELS[audioQuality] ?? '标准音质'
+    toast(`音质已切换为 ${label}`, { className: 'black-toast' })
   }, [audioQuality])
 
   useEffect(() => {
@@ -953,15 +1025,24 @@ function App() {
       const baseArtists = 'artist' in track ? track.artist.join('、') : track.artists
 
       const [urlInfo, lyricInfo, picInfo] = await Promise.all([
-        fetchJson<{ url: string }>(`${API_BASE}?types=url&source=${source}&id=${track.id}&br=${bitrate}`),
+        fetchJson<{ url?: string | null }>(
+          `${API_BASE}?types=url&source=${source}&id=${track.id}&br=${bitrate}`,
+        ),
         fetchJson<{ lyric?: string | null; tlyric?: string | null }>(
           `${API_BASE}?types=lyric&source=${source}&id=${lyricId}`,
         ),
         fetchJson<{ url?: string }>(`${API_BASE}?types=pic&source=${source}&id=${picId}&size=500`),
       ])
 
+      const rawAudioUrl = urlInfo?.url ?? ''
+      if (!isSupportedAudioSource(rawAudioUrl)) {
+        throw new Error(INVALID_AUDIO_SOURCE_ERROR)
+      }
+
       const lyrics = mergeLyrics(lyricInfo.lyric, lyricInfo.tlyric)
       const artworkUrl = picInfo.url ?? ('artworkUrl' in track ? track.artworkUrl ?? '' : '')
+
+      const proxiedAudioUrl = proxifyAudioUrl(rawAudioUrl)
 
       return {
         id: String(track.id),
@@ -970,7 +1051,7 @@ function App() {
         album: track.album,
         source,
         artworkUrl,
-        audioUrl: proxifyAudioUrl(urlInfo.url),
+        audioUrl: proxiedAudioUrl,
         lyrics,
         duration: 'duration' in track ? track.duration : undefined,
         lyricId: lyricId ? String(lyricId) : undefined,
@@ -994,9 +1075,66 @@ function App() {
 
       if (shouldAutoplay) {
         await audio.play().catch(() => undefined)
+      } else {
+        setIsPlaying(false)
       }
     },
     [attachAudio, handleAutoAdvance, teardownAudio, volume],
+  )
+
+  const skipAfterInvalidTrack = useCallback(
+    (failedIndex: number) => {
+      const list = playlistRef.current
+      if (!list.length) {
+        setIsPlaying(false)
+        setIsBuffering(false)
+        return
+      }
+
+      const play = playTrackRef.current
+      if (!play) {
+        return
+      }
+
+      const shuffleOn = shuffleEnabledRef.current
+      const repeatState = repeatModeRef.current
+      let nextIndex: number | null = null
+
+      if (shuffleOn && list.length > 1) {
+        const options = list.map((_, index) => index).filter((index) => index !== failedIndex)
+        if (options.length) {
+          nextIndex = options[Math.floor(Math.random() * options.length)]
+        }
+      } else if (failedIndex + 1 < list.length) {
+        nextIndex = failedIndex + 1
+      } else if (repeatState === 'all' && list.length > 1) {
+        nextIndex = 0
+      }
+
+      if (nextIndex === null || nextIndex === failedIndex || nextIndex < 0 || nextIndex >= list.length) {
+        setIsPlaying(false)
+        setIsBuffering(false)
+        return
+      }
+
+      const target = list[nextIndex]
+      if (!target) {
+        setIsPlaying(false)
+        setIsBuffering(false)
+        return
+      }
+
+      const startPlayback = () => {
+        play(target, nextIndex).catch(() => undefined)
+      }
+
+      if (typeof window !== 'undefined') {
+        window.setTimeout(startPlayback, 0)
+      } else {
+        startPlayback()
+      }
+    },
+    [setIsBuffering, setIsPlaying],
   )
 
   const playTrack = useCallback(
@@ -1036,14 +1174,21 @@ function App() {
 
         await activateTrack(details, shouldAutoplay)
       } catch (err) {
-        console.error(err)
-        setError('载入歌曲时出现问题，请稍后再试。')
+        const error = err as Error
+        if (error?.message === INVALID_AUDIO_SOURCE_ERROR) {
+          console.warn('Audio source unavailable, skipping track automatically.', error)
+          toast('当前歌曲暂无可用播放链接，已自动跳过', { className: 'black-toast' })
+          skipAfterInvalidTrack(index)
+        } else {
+          console.error(err)
+          setError('载入歌曲时出现问题，请稍后再试。')
+        }
       } finally {
         setIsLoadingTrack(false)
         setIsBuffering(false)
       }
     },
-    [activateTrack, buildTrackDetails],
+    [activateTrack, buildTrackDetails, skipAfterInvalidTrack],
   )
 
   useEffect(() => {
@@ -1161,7 +1306,6 @@ function App() {
 
   const handleAudioQualityChange = useCallback(
     (selectedQuality: AudioQuality) => {
-      console.log('Audio quality switched to:', selectedQuality)
       setAudioQuality(selectedQuality)
     },
     [setAudioQuality]
@@ -1215,10 +1359,32 @@ function App() {
     toast('播放列表已清空', { className: 'black-toast' })
   }, [teardownAudio])
 
-  const handleDownloadTrack = useCallback((track: PlaylistEntry) => {
-    console.log(`Downloading: ${track.title}`)
-    toast(`开始下载「${track.title}」`, { className: 'black-toast' })
-  }, [])
+  const handleDownloadTrack = useCallback(
+    async (track: PlaylistEntry, quality: AudioQuality) => {
+      setDownloadQuality(quality)
+      try {
+        const bitrate = QUALITY_TO_BR[quality]
+        const source = track.source || DEFAULT_SOURCE
+        const urlInfo = await fetchJson<{ url?: string | null }>(
+          `${API_BASE}?types=url&id=${track.id}&source=${source}&br=${bitrate}`,
+        )
+        const rawUrl = urlInfo?.url ?? ''
+        if (!isSupportedAudioSource(rawUrl)) {
+          toast('未找到有效下载链接', { className: 'black-toast' })
+          return
+        }
+        const downloadUrl = proxifyAudioUrl(rawUrl)
+        toast(`开始下载：${track.title}`, { className: 'black-toast' })
+        if (typeof window !== 'undefined') {
+          window.open(downloadUrl, '_blank', 'noopener,noreferrer')
+        }
+      } catch (error) {
+        console.error('Failed to initiate download', error)
+        toast('未找到有效下载链接', { className: 'black-toast' })
+      }
+    },
+    [setDownloadQuality],
+  )
 
   const handleRemoveTrack = useCallback(
     (trackKey: string) => {
@@ -1813,20 +1979,19 @@ function App() {
               {activePanel === 'playlist' ? (
                 <div className="playlist-view">
                   <div className="list-header">
-                    <div className="results-meta">
-                      <span className="eyebrow">播放列表</span>
-                      <span className="result-count">{playlist.length} 首歌曲</span>
+                    <span className="list-header__title">播放列表（共 {playlist.length} 首）</span>
+                    <div className="list-header__actions">
+                      <button
+                        type="button"
+                        className="clear-playlist-btn"
+                        onClick={handleClearPlaylist}
+                        title="清空播放列表"
+                        disabled={!playlist.length}
+                      >
+                        <Trash2 aria-hidden="true" size={18} strokeWidth={1.8} />
+                        <span>清空</span>
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      className="clear-playlist-btn"
-                      onClick={handleClearPlaylist}
-                      title="清空播放列表"
-                      disabled={!playlist.length}
-                    >
-                      <Trash2 aria-hidden="true" size={18} strokeWidth={1.8} />
-                      <span>清空</span>
-                    </button>
                   </div>
                   {playlist.map((track, index) => {
                     const trackKey = getTrackKey(track)
@@ -1864,18 +2029,25 @@ function App() {
                           <span className="track-artist">{track.artists}</span>
                         </div>
                         <div className="song-actions">
-                          <button
-                            type="button"
-                            className="action-btn"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleDownloadTrack(track)
-                            }}
-                            aria-label={`下载 ${track.title}`}
-                            title="下载"
+                          <div
+                            className="download-action"
+                            onClick={(event) => event.stopPropagation()}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            onKeyUp={(event) => event.stopPropagation()}
                           >
-                            <Download aria-hidden="true" size={18} strokeWidth={1.9} />
-                          </button>
+                            <AudioQualityDropdown
+                              value={downloadQuality}
+                              onChange={(quality) => {
+                                void handleDownloadTrack(track, quality)
+                              }}
+                              ariaLabel={`选择 ${track.title} 的下载音质`}
+                              triggerTitle="下载"
+                              triggerContent={<Download aria-hidden="true" size={18} strokeWidth={1.9} />}
+                              variant="minimal"
+                              triggerClassName="action-btn"
+                            />
+                          </div>
                           <button
                             type="button"
                             className="action-btn delete-action"
