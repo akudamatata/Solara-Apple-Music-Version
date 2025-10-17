@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
-import type { CSSProperties, ChangeEvent } from 'react'
+import type { CSSProperties } from 'react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import Lyrics from './components/Lyrics'
@@ -8,6 +8,8 @@ import type { LyricLine } from './utils/lyrics'
 import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
 import type { BackgroundPalette } from './utils/palette'
 import { generateAppleMusicStyleBackground } from './utils/background'
+import AudioQualityDropdown from './AudioQualityDropdown'
+import { QUALITY_TO_BR, type AudioQuality } from './audioQuality'
 
 const API_BASE = '/proxy'
 const KUWO_HOST_PATTERN = /(^|\.)kuwo\.cn$/i
@@ -37,22 +39,6 @@ interface TrackDetails {
   artworkUrl: string
   audioUrl: string
   lyrics: LyricLine[]
-}
-
-type AudioQuality = 'standard' | 'high' | 'very_high' | 'lossless'
-
-const AUDIO_QUALITY_OPTIONS: Array<{ value: AudioQuality; label: string }> = [
-  { value: 'standard', label: '标准音质' },
-  { value: 'high', label: '高频音质' },
-  { value: 'very_high', label: '极高音质' },
-  { value: 'lossless', label: '无损音质' },
-]
-
-const QUALITY_TO_BR: Record<AudioQuality, number> = {
-  standard: 128,
-  high: 192,
-  very_high: 320,
-  lossless: 999,
 }
 
 const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
@@ -259,7 +245,6 @@ function App() {
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('very_high')
-  const qualitySelectId = useId()
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
@@ -277,7 +262,6 @@ function App() {
   const [playlist, setPlaylist] = useState<TrackDetails[]>([])
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
-  const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
   const [generatedBg, setGeneratedBg] = useState<string | null>(null)
   const [displayedBg, setDisplayedBg] = useState<string | null>(null)
   const [isBackgroundVisible, setIsBackgroundVisible] = useState(true)
@@ -546,7 +530,6 @@ function App() {
         setSearchResults([])
         setIsSearching(false)
         setHasMoreResults(false)
-        setFailedCoverMap({})
         return
       }
 
@@ -560,7 +543,6 @@ function App() {
         const parsedResults = Array.isArray(results) ? results : []
         setSearchResults(parsedResults)
         setHasMoreResults(parsedResults.length >= searchLimit)
-        setFailedCoverMap({})
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error(err)
@@ -854,8 +836,7 @@ function App() {
   }
 
   const handleAudioQualityChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      const selectedQuality = event.target.value as AudioQuality
+    (selectedQuality: AudioQuality) => {
       console.log('Audio quality switched to:', selectedQuality)
       setAudioQuality(selectedQuality)
     },
@@ -1143,19 +1124,7 @@ function App() {
               <div className="time-row">
                 <span className="time time-start">{formatTime(progressValue)}</span>
                 <div className="audio-quality-select-wrapper">
-                  <select
-                    id={qualitySelectId}
-                    className="audio-quality-select"
-                    value={audioQuality}
-                    onChange={handleAudioQualityChange}
-                    aria-label="选择音质"
-                  >
-                    {AUDIO_QUALITY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <AudioQualityDropdown value={audioQuality} onChange={handleAudioQualityChange} ariaLabel="选择音质" />
                 </div>
                 <span className="time time-end">{formatTime(progressMax)}</span>
               </div>
@@ -1266,11 +1235,7 @@ function App() {
                       )}
                       {searchResults.map((track) => {
                         const trackKey = getTrackKey(track)
-                        const coverUrl = track.pic_id
-                          ? `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
-                          : ''
                         const fallbackLetter = track.name?.trim()?.[0]?.toUpperCase() || '?'
-                        const shouldShowFallback = !coverUrl || failedCoverMap[trackKey]
                         return (
                           <button
                             type="button"
@@ -1281,19 +1246,7 @@ function App() {
                             onClick={() => handleSearchSelect(track)}
                           >
                             <span className="search-result-thumb" aria-hidden="true">
-                              {shouldShowFallback ? (
-                                <div className="cover-fallback">{fallbackLetter}</div>
-                              ) : (
-                                <img
-                                  src={coverUrl}
-                                  alt={track.name}
-                                  className="cover-image"
-                                  loading="lazy"
-                                  onError={() => {
-                                    setFailedCoverMap((prev) => ({ ...prev, [trackKey]: true }))
-                                  }}
-                                />
-                              )}
+                              <div className="cover-fallback">{fallbackLetter}</div>
                             </span>
                             <span className="search-result-meta">
                               <span className="search-result-title">{track.name}</span>
@@ -1322,7 +1275,6 @@ function App() {
                     setSearchLimit(SEARCH_PAGE_SIZE)
                     setHasMoreResults(false)
                     setSearchResults([])
-                    setFailedCoverMap({})
                     if (query.trim()) {
                       setIsSearching(true)
                     }
