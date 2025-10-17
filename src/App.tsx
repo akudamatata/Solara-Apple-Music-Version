@@ -297,6 +297,127 @@ function App() {
   }, [repeatMode])
 
   useEffect(() => {
+    const current = currentTrackRef.current
+    if (!current) {
+      return
+    }
+
+    const controller = new AbortController()
+    const currentKey = getTrackKey(current)
+    let detachLoaded: (() => void) | null = null
+
+    const updateQuality = async () => {
+      setIsBuffering(true)
+
+      try {
+        const bitrate = QUALITY_TO_BR[audioQuality]
+        const urlInfo = await fetchJson<{ url: string }>(
+          `${API_BASE}?types=url&source=${current.source || DEFAULT_SOURCE}&id=${current.id}&br=${bitrate}`,
+          controller.signal,
+        )
+
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const latest = currentTrackRef.current
+        if (!latest || getTrackKey(latest) !== currentKey) {
+          return
+        }
+
+        setError(null)
+        const updatedTrack: TrackDetails = { ...latest, audioUrl: urlInfo.url }
+        currentTrackRef.current = updatedTrack
+        setCurrentTrack(updatedTrack)
+        playlistRef.current = playlistRef.current.map((track) =>
+          getTrackKey(track) === currentKey ? { ...track, audioUrl: urlInfo.url } : track,
+        )
+        setPlaylist((prev) =>
+          prev.map((track) => (getTrackKey(track) === currentKey ? { ...track, audioUrl: urlInfo.url } : track)),
+        )
+
+        const audio = audioRef.current
+        if (!audio) {
+          setIsBuffering(false)
+          return
+        }
+
+        const wasPlaying = !audio.paused
+        const previousTime = audio.currentTime
+
+        const activeAudio = audio
+
+        function cleanupQualityListeners() {
+          activeAudio.removeEventListener('loadeddata', handleLoadedData)
+          activeAudio.removeEventListener('error', handleError)
+        }
+
+        function handleLoadedData() {
+          cleanupQualityListeners()
+          if (controller.signal.aborted) {
+            return
+          }
+
+          const targetTime = Number.isFinite(previousTime)
+            ? Math.min(previousTime, activeAudio.duration || previousTime)
+            : 0
+
+          if (targetTime > 0) {
+            try {
+              activeAudio.currentTime = targetTime
+            } catch (seekError) {
+              console.warn('Failed to seek after quality switch:', seekError)
+              activeAudio.currentTime = 0
+            }
+          } else {
+            activeAudio.currentTime = 0
+          }
+
+          setProgress(activeAudio.currentTime || 0)
+          setIsBuffering(false)
+
+          if (wasPlaying) {
+            activeAudio.play().catch(() => undefined)
+          }
+        }
+
+        function handleError() {
+          cleanupQualityListeners()
+          if (controller.signal.aborted) {
+            return
+          }
+          setIsBuffering(false)
+          setError('切换音质时出现问题，请稍后重试。')
+        }
+
+        detachLoaded = cleanupQualityListeners
+
+        activeAudio.pause()
+        activeAudio.addEventListener('loadeddata', handleLoadedData)
+        activeAudio.addEventListener('error', handleError)
+        activeAudio.src = urlInfo.url
+        activeAudio.load()
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return
+        }
+        console.error('Failed to switch audio quality', error)
+        setError('切换音质时出现问题，请稍后重试。')
+        setIsBuffering(false)
+      }
+    }
+
+    updateQuality()
+
+    return () => {
+      controller.abort()
+      if (detachLoaded) {
+        detachLoaded()
+      }
+    }
+  }, [audioQuality])
+
+  useEffect(() => {
     const updateSearchBarHeight = () => {
       const searchBar = searchBarRef.current
       if (searchBar) {
@@ -1001,19 +1122,21 @@ function App() {
               />
               <div className="time-row">
                 <span className="time time-start">{formatTime(progressValue)}</span>
-                <select
-                  id={qualitySelectId}
-                  className="audio-quality-select"
-                  value={audioQuality}
-                  onChange={handleAudioQualityChange}
-                  aria-label="选择音质"
-                >
-                  {AUDIO_QUALITY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="audio-quality-select-wrapper">
+                  <select
+                    id={qualitySelectId}
+                    className="audio-quality-select"
+                    value={audioQuality}
+                    onChange={handleAudioQualityChange}
+                    aria-label="选择音质"
+                  >
+                    {AUDIO_QUALITY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <span className="time time-end">{formatTime(progressMax)}</span>
               </div>
             </div>
