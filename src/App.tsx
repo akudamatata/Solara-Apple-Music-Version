@@ -1018,6 +1018,25 @@ function App() {
               </div>
             </div>
 
+            <div className="audio-quality-control" role="group" aria-label="音质选择">
+              <label className="audio-quality-label" htmlFor={qualitySelectId}>
+                音质
+              </label>
+              <select
+                id={qualitySelectId}
+                className="audio-quality-select"
+                value={audioQuality}
+                onChange={(event) => setAudioQuality(event.target.value as AudioQuality)}
+                aria-label="选择音质"
+              >
+                {AUDIO_QUALITY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="player-controls control-row" role="group" aria-label="播放控制">
               <button
                 type="button"
