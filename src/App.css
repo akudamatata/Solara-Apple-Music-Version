@@ -435,39 +435,50 @@
 
 .audio-quality-select-wrapper {
   position: relative;
-  width: 8.5em;
-  min-width: 8.5em;
   justify-self: center;
   display: flex;
   align-items: center;
+  width: auto;
+  min-width: 0;
 }
 
 .audio-quality-select-wrapper .audio-quality-dd {
   position: relative;
-  display: inline-block;
-  width: 100%;
+  display: inline-flex;
+  width: auto;
 }
 
 .audio-quality-select-wrapper .audio-quality-dd .source-dd__trigger {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 36px;
-  padding: 0 0.75rem;
+  width: max-content;
+  min-width: 0;
+  padding: 4px 10px;
   gap: 0.25rem;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  border-radius: 10px;
   white-space: nowrap;
+  height: auto;
 }
 
 .audio-quality-select-wrapper .audio-quality-dd .source-dd__menu {
   left: auto;
   right: 0;
   top: calc(100% + 4px);
-  min-width: 100%;
+  min-width: unset;
   max-width: 100vw;
+  width: max-content;
   transform-origin: top right;
   overflow-y: auto;
+  padding: 4px;
+}
+
+.audio-quality-select-wrapper .audio-quality-dd .source-dd__item {
+  font-size: 0.875rem;
+  line-height: 1.3;
+  padding: 4px 10px;
 }
 
 .player-progress .progress {
@@ -1875,8 +1886,9 @@ input[type='range']::-moz-range-track {
   }
 
   .time-row .audio-quality-select-wrapper .source-dd__trigger {
-    font-size: 0.78rem;
-    height: 34px;
+    font-size: 0.82rem;
+    height: auto;
+    padding: 4px 10px;
   }
 
   .segment {
