@@ -277,7 +277,6 @@ function App() {
   const [playlist, setPlaylist] = useState<TrackDetails[]>([])
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
-  const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
   const [generatedBg, setGeneratedBg] = useState<string | null>(null)
   const [displayedBg, setDisplayedBg] = useState<string | null>(null)
   const [isBackgroundVisible, setIsBackgroundVisible] = useState(true)
@@ -546,7 +545,6 @@ function App() {
         setSearchResults([])
         setIsSearching(false)
         setHasMoreResults(false)
-        setFailedCoverMap({})
         return
       }
 
@@ -560,7 +558,6 @@ function App() {
         const parsedResults = Array.isArray(results) ? results : []
         setSearchResults(parsedResults)
         setHasMoreResults(parsedResults.length >= searchLimit)
-        setFailedCoverMap({})
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error(err)
@@ -1266,11 +1263,7 @@ function App() {
                       )}
                       {searchResults.map((track) => {
                         const trackKey = getTrackKey(track)
-                        const coverUrl = track.pic_id
-                          ? `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
-                          : ''
                         const fallbackLetter = track.name?.trim()?.[0]?.toUpperCase() || '?'
-                        const shouldShowFallback = !coverUrl || failedCoverMap[trackKey]
                         return (
                           <button
                             type="button"
@@ -1281,19 +1274,7 @@ function App() {
                             onClick={() => handleSearchSelect(track)}
                           >
                             <span className="search-result-thumb" aria-hidden="true">
-                              {shouldShowFallback ? (
-                                <div className="cover-fallback">{fallbackLetter}</div>
-                              ) : (
-                                <img
-                                  src={coverUrl}
-                                  alt={track.name}
-                                  className="cover-image"
-                                  loading="lazy"
-                                  onError={() => {
-                                    setFailedCoverMap((prev) => ({ ...prev, [trackKey]: true }))
-                                  }}
-                                />
-                              )}
+                              <div className="cover-fallback">{fallbackLetter}</div>
                             </span>
                             <span className="search-result-meta">
                               <span className="search-result-title">{track.name}</span>
@@ -1322,7 +1303,6 @@ function App() {
                     setSearchLimit(SEARCH_PAGE_SIZE)
                     setHasMoreResults(false)
                     setSearchResults([])
-                    setFailedCoverMap({})
                     if (query.trim()) {
                       setIsSearching(true)
                     }
