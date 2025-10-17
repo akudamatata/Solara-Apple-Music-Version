@@ -70,7 +70,6 @@ export default function AudioQualityDropdown({ value, onChange, ariaLabel }: Aud
         aria-label={ariaLabel}
       >
         {AUDIO_QUALITY_OPTIONS.find((option) => option.value === value)?.label ?? '选择音质'}
-        <span className="source-dd__caret" aria-hidden="true" />
       </button>
       {open && (
         <div ref={menuRef} className="source-dd__menu" role="listbox" aria-activedescendant={value}>

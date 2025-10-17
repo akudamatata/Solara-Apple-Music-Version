@@ -449,15 +449,10 @@
 .audio-quality-select-wrapper .audio-quality-dd .source-dd__trigger {
   width: 100%;
   height: 36px;
-  padding: 0 34px 0 14px;
+  padding: 0 14px;
   font-size: 0.85rem;
   white-space: nowrap;
-}
-
-.audio-quality-select-wrapper .audio-quality-dd .source-dd__caret {
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid rgba(255, 255, 255, 0.85);
+  justify-content: center;
 }
 
 .audio-quality-select-wrapper .audio-quality-dd .source-dd__menu {
