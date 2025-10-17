@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import type { CSSProperties } from 'react'
+import { Radar } from 'lucide-react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import Lyrics from './components/Lyrics'
@@ -261,12 +262,21 @@ function App() {
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('very_high')
+  const [isExploring, setIsExploring] = useState(false)
+  const [isExplorePulsing, setIsExplorePulsing] = useState(false)
+  const [toastState, setToastState] = useState<{
+    type: 'success' | 'error'
+    message: string
+    key: number
+  } | null>(null)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const currentTrackRef = useRef<TrackDetails | null>(null)
   const playlistRef = useRef<TrackDetails[]>([])
   const activeIndexRef = useRef(-1)
+  const toastTimeoutRef = useRef<number | null>(null)
+  const explorePulseTimeoutRef = useRef<number | null>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
@@ -947,11 +957,47 @@ function App() {
     [activateTrack],
   )
 
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    if (toastTimeoutRef.current !== null) {
+      window.clearTimeout(toastTimeoutRef.current)
+      toastTimeoutRef.current = null
+    }
+
+    const key = Date.now()
+    setToastState({ message, type, key })
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToastState(null)
+      toastTimeoutRef.current = null
+    }, 3600)
+  }, [])
+
+  const toast = useMemo(
+    () => ({
+      success: (message: string) => showToast(message, 'success'),
+      error: (message: string) => showToast(message, 'error'),
+    }),
+    [showToast],
+  )
+
   useEffect(() => {
     return () => {
       teardownAudio()
     }
   }, [teardownAudio])
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current !== null) {
+        window.clearTimeout(toastTimeoutRef.current)
+        toastTimeoutRef.current = null
+      }
+
+      if (explorePulseTimeoutRef.current !== null) {
+        window.clearTimeout(explorePulseTimeoutRef.current)
+        explorePulseTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   const backgroundStyle = useMemo<CSSProperties>(
     () =>
@@ -1117,6 +1163,126 @@ function App() {
     },
     [buildTrackDetails, playTrack],
   )
+
+  const handleExploreClick = useCallback(async () => {
+    if (isExploring) {
+      return
+    }
+
+    setIsExploring(true)
+    setError(null)
+
+    if (explorePulseTimeoutRef.current !== null) {
+      window.clearTimeout(explorePulseTimeoutRef.current)
+      explorePulseTimeoutRef.current = null
+    }
+    setIsExplorePulsing(true)
+    explorePulseTimeoutRef.current = window.setTimeout(() => {
+      setIsExplorePulsing(false)
+      explorePulseTimeoutRef.current = null
+    }, 400)
+
+    try {
+      const response = await fetch('/proxy?types=playlist&id=3778678&limit=50&offset=0')
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`)
+      }
+
+      const data = await response.json()
+      const rawTracks: Array<Record<string, unknown>> = Array.isArray(data?.tracks)
+        ? data.tracks
+        : Array.isArray(data?.playlist?.tracks)
+          ? data.playlist.tracks
+          : []
+
+      if (!rawTracks.length) {
+        throw new Error('No tracks received')
+      }
+
+      const normalizedResults = rawTracks
+        .reduce<SearchResult[]>((acc, track) => {
+          const rawId = track?.id ?? track?.trackId
+          const resolvedId = rawId !== undefined && rawId !== null ? String(rawId) : ''
+          if (!resolvedId.trim()) {
+            return acc
+          }
+
+          const name = String(track?.name ?? '').trim()
+          if (!name) {
+            return acc
+          }
+
+          const albumInfo = (track?.al ?? track?.album) as Record<string, unknown> | undefined
+          const artistArray = (track?.ar ?? track?.artists) as Array<Record<string, unknown>> | undefined
+
+          const result: SearchResult = {
+            id: resolvedId,
+            name,
+            artist:
+              artistArray?.map((item) => String(item?.name ?? '')).filter(Boolean) ??
+              (track?.artist ? [String(track.artist)] : []),
+            album: String(albumInfo?.name ?? ''),
+            pic_id: String(
+              albumInfo?.pic_str ?? albumInfo?.pic ?? albumInfo?.picId ?? albumInfo?.picUrl ?? '',
+            ),
+            lyric_id: String(track?.lyric_id ?? track?.lyricId ?? resolvedId),
+            source: 'netease',
+          }
+
+          acc.push(result)
+          return acc
+        }, [])
+        .slice(0, 50)
+
+      if (!normalizedResults.length) {
+        throw new Error('No playable tracks received')
+      }
+
+      const detailedTracks = await Promise.all(
+        normalizedResults.map(async (result) => {
+          try {
+            const details = await buildTrackDetails(result)
+            const matchingRaw = rawTracks.find((item) => {
+              const itemId = item?.id ?? item?.trackId
+              return String(itemId ?? '') === String(result.id)
+            })
+            const durationMs = Number(matchingRaw?.dt ?? matchingRaw?.duration ?? 0)
+            return durationMs > 0
+              ? { ...details, duration: Math.round(durationMs / 1000) }
+              : details
+          } catch (err) {
+            console.error(err)
+            return null
+          }
+        }),
+      )
+
+      const validTracks = detailedTracks.filter((track): track is TrackDetails => Boolean(track?.audioUrl))
+
+      if (!validTracks.length) {
+        throw new Error('No playable tracks built')
+      }
+
+      playlistRef.current = validTracks
+      setPlaylist(validTracks)
+
+      if (!currentTrackRef.current && validTracks[0]) {
+        await playTrack(validTracks[0], 0)
+      }
+
+      toast.success('已更新热门前 50 首歌曲 🎧')
+    } catch (err) {
+      toast.error('获取热门歌曲失败，请稍后再试')
+      console.error(err)
+    } finally {
+      setIsExploring(false)
+    }
+  }, [
+    buildTrackDetails,
+    isExploring,
+    playTrack,
+    toast,
+  ])
 
   const handlePrevious = useCallback(() => {
     const list = playlistRef.current
@@ -1463,6 +1629,18 @@ function App() {
                     </div>
                   )}
                 </div>
+                <button
+                  type="button"
+                  className={`explore-btn${isExploring ? ' is-loading' : ''}${
+                    isExplorePulsing ? ' is-pulsing' : ''
+                  }`}
+                  onClick={handleExploreClick}
+                  disabled={isExploring}
+                  aria-label="探索热门歌曲"
+                  data-tooltip="探索热门歌曲"
+                >
+                  <Radar aria-hidden="true" size={18} strokeWidth={1.75} />
+                </button>
                 <SourceDropdown
                   value={searchSource}
                   onChange={(nextSource) => {
@@ -1574,6 +1752,17 @@ function App() {
           <PlaylistIcon />
           <span className="sr-only">显示播放列表</span>
         </button>
+      </div>
+      <div className="toast-container" aria-live="assertive" aria-atomic="true">
+        {toastState && (
+          <div
+            key={toastState.key}
+            className={`toast-message toast-${toastState.type} is-visible`}
+            role="status"
+          >
+            {toastState.message}
+          </div>
+        )}
       </div>
     </div>
   )
