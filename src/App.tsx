@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
-import type { CSSProperties, ChangeEvent } from 'react'
+import type { CSSProperties } from 'react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import Lyrics from './components/Lyrics'
@@ -8,6 +8,8 @@ import type { LyricLine } from './utils/lyrics'
 import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
 import type { BackgroundPalette } from './utils/palette'
 import { generateAppleMusicStyleBackground } from './utils/background'
+import AudioQualityDropdown from './AudioQualityDropdown'
+import { QUALITY_TO_BR, type AudioQuality } from './audioQuality'
 
 const API_BASE = '/proxy'
 const KUWO_HOST_PATTERN = /(^|\.)kuwo\.cn$/i
@@ -37,23 +39,23 @@ interface TrackDetails {
   artworkUrl: string
   audioUrl: string
   lyrics: LyricLine[]
+  duration?: number
 }
 
-type AudioQuality = 'standard' | 'high' | 'very_high' | 'lossless'
+const STORAGE_KEYS = {
+  playlist: 'playlist',
+  currentTrackId: 'currentTrackId',
+  playProgress: 'playProgress',
+  volume: 'volume',
+  repeatMode: 'repeatMode',
+  isShuffle: 'isShuffle',
+  audioQuality: 'audioQuality',
+  currentTrack: 'currentTrack',
+} as const
 
-const AUDIO_QUALITY_OPTIONS: Array<{ value: AudioQuality; label: string }> = [
-  { value: 'standard', label: '标准音质' },
-  { value: 'high', label: '高频音质' },
-  { value: 'very_high', label: '极高音质' },
-  { value: 'lossless', label: '无损音质' },
-]
+const VALID_REPEAT_MODES = new Set<'none' | 'one' | 'all'>(['none', 'one', 'all'])
 
-const QUALITY_TO_BR: Record<AudioQuality, number> = {
-  standard: 128,
-  high: 192,
-  very_high: 320,
-  lossless: 999,
-}
+const VALID_AUDIO_QUALITIES = new Set<AudioQuality>(['standard', 'high', 'very_high', 'lossless'])
 
 const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
   const response = await fetch(url, { signal })
@@ -102,7 +104,7 @@ const SearchIcon = () => (
 )
 
 const PlayIcon = () => (
-  <svg viewBox="0 0 32 28" aria-hidden="true" focusable="false">
+  <svg viewBox="0 0 28 28" aria-hidden="true" focusable="false">
     <path
       d="M10.345 23.287c.415 0 .763-.15 1.22-.407l12.742-7.404c.838-.481 1.178-.855 1.178-1.46 0-.599-.34-.972-1.178-1.462L11.565 5.158c-.457-.265-.805-.407-1.22-.407-.789 0-1.345.606-1.345 1.57V21.71c0 .971.556 1.577 1.345 1.577z"
       fill="currentColor"
@@ -259,7 +261,6 @@ function App() {
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('very_high')
-  const qualitySelectId = useId()
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
@@ -277,7 +278,6 @@ function App() {
   const [playlist, setPlaylist] = useState<TrackDetails[]>([])
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
-  const [failedCoverMap, setFailedCoverMap] = useState<Record<string, boolean>>({})
   const [generatedBg, setGeneratedBg] = useState<string | null>(null)
   const [displayedBg, setDisplayedBg] = useState<string | null>(null)
   const [isBackgroundVisible, setIsBackgroundVisible] = useState(true)
@@ -291,11 +291,140 @@ function App() {
   const searchBarRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const storage = window.localStorage
+
+    const readJSON = <T,>(key: (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]): T | null => {
+      const raw = storage.getItem(key)
+      if (!raw) {
+        return null
+      }
+      try {
+        return JSON.parse(raw) as T
+      } catch (error) {
+        console.warn(`Failed to parse persisted ${key}`, error)
+        return null
+      }
+    }
+
+    const savedPlaylist = readJSON<TrackDetails[]>(STORAGE_KEYS.playlist)
+    if (Array.isArray(savedPlaylist) && savedPlaylist.length) {
+      setPlaylist(savedPlaylist)
+      playlistRef.current = savedPlaylist
+    }
+
+    const savedTrack = readJSON<TrackDetails>(STORAGE_KEYS.currentTrack)
+    if (savedTrack && typeof savedTrack.id === 'string') {
+      setCurrentTrack(savedTrack)
+      currentTrackRef.current = savedTrack
+      if (typeof savedTrack.duration === 'number' && Number.isFinite(savedTrack.duration)) {
+        setDuration(savedTrack.duration)
+      }
+    }
+
+    const savedTrackId = storage.getItem(STORAGE_KEYS.currentTrackId)
+    if (savedTrackId) {
+      setCurrentTrackId(savedTrackId)
+    }
+
+    const savedProgress = storage.getItem(STORAGE_KEYS.playProgress)
+    if (savedProgress !== null) {
+      const parsedProgress = Number(savedProgress)
+      if (!Number.isNaN(parsedProgress) && parsedProgress >= 0) {
+        setProgress(parsedProgress)
+      }
+    }
+
+    const savedVolume = storage.getItem(STORAGE_KEYS.volume)
+    if (savedVolume !== null) {
+      const parsedVolume = Number(savedVolume)
+      if (!Number.isNaN(parsedVolume)) {
+        const clampedVolume = Math.min(Math.max(parsedVolume, 0), 1)
+        setVolume(clampedVolume)
+      }
+    }
+
+    const savedRepeat = storage.getItem(STORAGE_KEYS.repeatMode)
+    if (savedRepeat && VALID_REPEAT_MODES.has(savedRepeat as 'none' | 'one' | 'all')) {
+      setRepeatMode(savedRepeat as 'none' | 'one' | 'all')
+    }
+
+    const savedShuffle = storage.getItem(STORAGE_KEYS.isShuffle)
+    if (savedShuffle === 'true' || savedShuffle === 'false') {
+      setIsShuffle(savedShuffle === 'true')
+    }
+
+    const savedQuality = storage.getItem(STORAGE_KEYS.audioQuality)
+    if (savedQuality && VALID_AUDIO_QUALITIES.has(savedQuality as AudioQuality)) {
+      setAudioQuality(savedQuality as AudioQuality)
+    }
+  }, [])
+
+  useEffect(() => {
     currentTrackRef.current = currentTrack
   }, [currentTrack])
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (currentTrack) {
+      window.localStorage.setItem(STORAGE_KEYS.currentTrack, JSON.stringify(currentTrack))
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.currentTrack)
+    }
+  }, [currentTrack])
+
+  useEffect(() => {
+    const storedTrack = currentTrackRef.current
+    if (!storedTrack) {
+      return
+    }
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return
+    }
+
+    if (storedTrack.duration === duration) {
+      return
+    }
+
+    const updatedTrack: TrackDetails = { ...storedTrack, duration }
+    currentTrackRef.current = updatedTrack
+    setCurrentTrack(updatedTrack)
+    const updatedKey = getTrackKey(updatedTrack)
+    let playlistUpdated = false
+    const nextPlaylist = playlistRef.current.map((track) => {
+      if (getTrackKey(track) === updatedKey) {
+        playlistUpdated = true
+        return { ...track, duration }
+      }
+      return track
+    })
+    if (playlistUpdated) {
+      playlistRef.current = nextPlaylist
+      setPlaylist(nextPlaylist)
+    }
+  }, [duration])
+
+  useEffect(() => {
     playlistRef.current = playlist
+  }, [playlist])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (playlist.length) {
+      window.localStorage.setItem(STORAGE_KEYS.playlist, JSON.stringify(playlist))
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.playlist)
+    }
   }, [playlist])
 
   useEffect(() => {
@@ -303,15 +432,41 @@ function App() {
   }, [playlist, currentTrackId])
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (currentTrackId) {
+      window.localStorage.setItem(STORAGE_KEYS.currentTrackId, currentTrackId)
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.currentTrackId)
+    }
+  }, [currentTrackId])
+
+  useEffect(() => {
     shuffleEnabledRef.current = isShuffle
     if (!isShuffle) {
       shuffleHistoryRef.current = []
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.isShuffle, String(isShuffle))
     }
   }, [isShuffle])
 
   useEffect(() => {
     repeatModeRef.current = repeatMode
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.repeatMode, repeatMode)
+    }
   }, [repeatMode])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.localStorage.setItem(STORAGE_KEYS.audioQuality, audioQuality)
+  }, [audioQuality])
 
   useEffect(() => {
     const current = currentTrackRef.current
@@ -536,7 +691,24 @@ function App() {
     if (audioRef.current) {
       audioRef.current.volume = volume
     }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.volume, String(volume))
+    }
   }, [volume])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const handler = window.setTimeout(() => {
+      window.localStorage.setItem(STORAGE_KEYS.playProgress, String(Math.max(progress, 0)))
+    }, 5000)
+
+    return () => {
+      window.clearTimeout(handler)
+    }
+  }, [progress])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -546,7 +718,6 @@ function App() {
         setSearchResults([])
         setIsSearching(false)
         setHasMoreResults(false)
-        setFailedCoverMap({})
         return
       }
 
@@ -560,7 +731,6 @@ function App() {
         const parsedResults = Array.isArray(results) ? results : []
         setSearchResults(parsedResults)
         setHasMoreResults(parsedResults.length >= searchLimit)
-        setFailedCoverMap({})
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error(err)
@@ -689,13 +859,20 @@ function App() {
   )
 
   const playTrack = useCallback(
-    async (details: TrackDetails, index: number, shouldAutoplay = true) => {
+    async (
+      details: TrackDetails,
+      index: number,
+      shouldAutoplay = true,
+      shouldSwitchPanel = true,
+    ) => {
       setIsLoadingTrack(true)
       setError(null)
       setProgress(0)
       setDuration(0)
       setActiveLyricIndex(0)
-      setActivePanel('lyrics')
+      if (shouldSwitchPanel) {
+        setActivePanel('lyrics')
+      }
       setIsBuffering(true)
       const trackIdentifier = getTrackKey(details)
       setCurrentTrackId(trackIdentifier)
@@ -854,8 +1031,7 @@ function App() {
   }
 
   const handleAudioQualityChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      const selectedQuality = event.target.value as AudioQuality
+    (selectedQuality: AudioQuality) => {
       console.log('Audio quality switched to:', selectedQuality)
       setAudioQuality(selectedQuality)
     },
@@ -878,7 +1054,7 @@ function App() {
           shuffleHistoryRef.current.push(getTrackKey(current))
         }
       }
-      await playTrack(track, index)
+      await playTrack(track, index, true, false)
     },
     [playTrack],
   )
@@ -1143,19 +1319,7 @@ function App() {
               <div className="time-row">
                 <span className="time time-start">{formatTime(progressValue)}</span>
                 <div className="audio-quality-select-wrapper">
-                  <select
-                    id={qualitySelectId}
-                    className="audio-quality-select"
-                    value={audioQuality}
-                    onChange={handleAudioQualityChange}
-                    aria-label="选择音质"
-                  >
-                    {AUDIO_QUALITY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <AudioQualityDropdown value={audioQuality} onChange={handleAudioQualityChange} ariaLabel="选择音质" />
                 </div>
                 <span className="time time-end">{formatTime(progressMax)}</span>
               </div>
@@ -1266,11 +1430,7 @@ function App() {
                       )}
                       {searchResults.map((track) => {
                         const trackKey = getTrackKey(track)
-                        const coverUrl = track.pic_id
-                          ? `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=120`
-                          : ''
                         const fallbackLetter = track.name?.trim()?.[0]?.toUpperCase() || '?'
-                        const shouldShowFallback = !coverUrl || failedCoverMap[trackKey]
                         return (
                           <button
                             type="button"
@@ -1281,19 +1441,7 @@ function App() {
                             onClick={() => handleSearchSelect(track)}
                           >
                             <span className="search-result-thumb" aria-hidden="true">
-                              {shouldShowFallback ? (
-                                <div className="cover-fallback">{fallbackLetter}</div>
-                              ) : (
-                                <img
-                                  src={coverUrl}
-                                  alt={track.name}
-                                  className="cover-image"
-                                  loading="lazy"
-                                  onError={() => {
-                                    setFailedCoverMap((prev) => ({ ...prev, [trackKey]: true }))
-                                  }}
-                                />
-                              )}
+                              <div className="cover-fallback">{fallbackLetter}</div>
                             </span>
                             <span className="search-result-meta">
                               <span className="search-result-title">{track.name}</span>
@@ -1322,7 +1470,6 @@ function App() {
                     setSearchLimit(SEARCH_PAGE_SIZE)
                     setHasMoreResults(false)
                     setSearchResults([])
-                    setFailedCoverMap({})
                     if (query.trim()) {
                       setIsSearching(true)
                     }
