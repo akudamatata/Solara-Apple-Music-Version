@@ -9,7 +9,8 @@ import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
 import type { BackgroundPalette } from './utils/palette'
 import { generateAppleMusicStyleBackground } from './utils/background'
 
-const API_BASE = 'https://music-api.gdstudio.xyz/api.php'
+const API_BASE = '/proxy'
+const KUWO_HOST_PATTERN = /(^|\.)kuwo\.cn$/i
 const DEFAULT_SOURCE: SourceValue = 'netease'
 const SEARCH_PAGE_SIZE = 24
 const getTrackKey = (track: { id: string | number; source?: string }) => {
@@ -60,6 +61,22 @@ const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
     throw new Error(`Request failed with status ${response.status}`)
   }
   return response.json() as Promise<T>
+}
+
+const proxifyAudioUrl = (rawUrl: string | undefined | null) => {
+  if (!rawUrl) {
+    return ''
+  }
+
+  try {
+    const parsed = new URL(rawUrl)
+    if (KUWO_HOST_PATTERN.test(parsed.hostname)) {
+      return `${API_BASE}?target=${encodeURIComponent(parsed.toString())}`
+    }
+    return parsed.toString()
+  } catch {
+    return rawUrl
+  }
 }
 
 const formatTime = (value: number) => {
@@ -326,14 +343,17 @@ function App() {
         }
 
         setError(null)
-        const updatedTrack: TrackDetails = { ...latest, audioUrl: urlInfo.url }
+        const proxiedUrl = proxifyAudioUrl(urlInfo.url)
+        const updatedTrack: TrackDetails = { ...latest, audioUrl: proxiedUrl }
         currentTrackRef.current = updatedTrack
         setCurrentTrack(updatedTrack)
         playlistRef.current = playlistRef.current.map((track) =>
-          getTrackKey(track) === currentKey ? { ...track, audioUrl: urlInfo.url } : track,
+          getTrackKey(track) === currentKey ? { ...track, audioUrl: proxiedUrl } : track,
         )
         setPlaylist((prev) =>
-          prev.map((track) => (getTrackKey(track) === currentKey ? { ...track, audioUrl: urlInfo.url } : track)),
+          prev.map((track) =>
+            getTrackKey(track) === currentKey ? { ...track, audioUrl: proxiedUrl } : track,
+          ),
         )
 
         const audio = audioRef.current
@@ -644,7 +664,7 @@ function App() {
       album: track.album,
       source: track.source,
       artworkUrl,
-      audioUrl: urlInfo.url,
+      audioUrl: proxifyAudioUrl(urlInfo.url),
       lyrics,
     }
   }, [audioQuality])
