@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ChangeEvent } from 'react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import Lyrics from './components/Lyrics'
@@ -36,6 +36,22 @@ interface TrackDetails {
   artworkUrl: string
   audioUrl: string
   lyrics: LyricLine[]
+}
+
+type AudioQuality = 'standard' | 'high' | 'very_high' | 'lossless'
+
+const AUDIO_QUALITY_OPTIONS: Array<{ value: AudioQuality; label: string }> = [
+  { value: 'standard', label: '标准音质' },
+  { value: 'high', label: '高频音质' },
+  { value: 'very_high', label: '极高音质' },
+  { value: 'lossless', label: '无损音质' },
+]
+
+const QUALITY_TO_BR: Record<AudioQuality, number> = {
+  standard: 128,
+  high: 192,
+  very_high: 320,
+  lossless: 999,
 }
 
 const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
@@ -225,6 +241,8 @@ function App() {
   const [currentTrack, setCurrentTrack] = useState<TrackDetails | null>(null)
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [audioQuality, setAudioQuality] = useState<AudioQuality>('very_high')
+  const qualitySelectId = useId()
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
@@ -277,6 +295,127 @@ function App() {
   useEffect(() => {
     repeatModeRef.current = repeatMode
   }, [repeatMode])
+
+  useEffect(() => {
+    const current = currentTrackRef.current
+    if (!current) {
+      return
+    }
+
+    const controller = new AbortController()
+    const currentKey = getTrackKey(current)
+    let detachLoaded: (() => void) | null = null
+
+    const updateQuality = async () => {
+      setIsBuffering(true)
+
+      try {
+        const bitrate = QUALITY_TO_BR[audioQuality]
+        const urlInfo = await fetchJson<{ url: string }>(
+          `${API_BASE}?types=url&source=${current.source || DEFAULT_SOURCE}&id=${current.id}&br=${bitrate}`,
+          controller.signal,
+        )
+
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const latest = currentTrackRef.current
+        if (!latest || getTrackKey(latest) !== currentKey) {
+          return
+        }
+
+        setError(null)
+        const updatedTrack: TrackDetails = { ...latest, audioUrl: urlInfo.url }
+        currentTrackRef.current = updatedTrack
+        setCurrentTrack(updatedTrack)
+        playlistRef.current = playlistRef.current.map((track) =>
+          getTrackKey(track) === currentKey ? { ...track, audioUrl: urlInfo.url } : track,
+        )
+        setPlaylist((prev) =>
+          prev.map((track) => (getTrackKey(track) === currentKey ? { ...track, audioUrl: urlInfo.url } : track)),
+        )
+
+        const audio = audioRef.current
+        if (!audio) {
+          setIsBuffering(false)
+          return
+        }
+
+        const wasPlaying = !audio.paused
+        const previousTime = audio.currentTime
+
+        const activeAudio = audio
+
+        function cleanupQualityListeners() {
+          activeAudio.removeEventListener('loadeddata', handleLoadedData)
+          activeAudio.removeEventListener('error', handleError)
+        }
+
+        function handleLoadedData() {
+          cleanupQualityListeners()
+          if (controller.signal.aborted) {
+            return
+          }
+
+          const targetTime = Number.isFinite(previousTime)
+            ? Math.min(previousTime, activeAudio.duration || previousTime)
+            : 0
+
+          if (targetTime > 0) {
+            try {
+              activeAudio.currentTime = targetTime
+            } catch (seekError) {
+              console.warn('Failed to seek after quality switch:', seekError)
+              activeAudio.currentTime = 0
+            }
+          } else {
+            activeAudio.currentTime = 0
+          }
+
+          setProgress(activeAudio.currentTime || 0)
+          setIsBuffering(false)
+
+          if (wasPlaying) {
+            activeAudio.play().catch(() => undefined)
+          }
+        }
+
+        function handleError() {
+          cleanupQualityListeners()
+          if (controller.signal.aborted) {
+            return
+          }
+          setIsBuffering(false)
+          setError('切换音质时出现问题，请稍后重试。')
+        }
+
+        detachLoaded = cleanupQualityListeners
+
+        activeAudio.pause()
+        activeAudio.addEventListener('loadeddata', handleLoadedData)
+        activeAudio.addEventListener('error', handleError)
+        activeAudio.src = urlInfo.url
+        activeAudio.load()
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return
+        }
+        console.error('Failed to switch audio quality', error)
+        setError('切换音质时出现问题，请稍后重试。')
+        setIsBuffering(false)
+      }
+    }
+
+    updateQuality()
+
+    return () => {
+      controller.abort()
+      if (detachLoaded) {
+        detachLoaded()
+      }
+    }
+  }, [audioQuality])
 
   useEffect(() => {
     const updateSearchBarHeight = () => {
@@ -481,9 +620,10 @@ function App() {
   )
 
   const buildTrackDetails = useCallback(async (track: SearchResult): Promise<TrackDetails> => {
+    const bitrate = QUALITY_TO_BR[audioQuality]
     const [urlInfo, lyricInfo, picInfo] = await Promise.all([
       fetchJson<{ url: string }>(
-        `${API_BASE}?types=url&source=${track.source || DEFAULT_SOURCE}&id=${track.id}&br=320`,
+        `${API_BASE}?types=url&source=${track.source || DEFAULT_SOURCE}&id=${track.id}&br=${bitrate}`,
       ),
       fetchJson<{ lyric?: string | null; tlyric?: string | null }>(
         `${API_BASE}?types=lyric&source=${track.source || DEFAULT_SOURCE}&id=${track.lyric_id || track.id}`,
@@ -507,7 +647,7 @@ function App() {
       audioUrl: urlInfo.url,
       lyrics,
     }
-  }, [])
+  }, [audioQuality])
 
   const activateTrack = useCallback(
     async (details: TrackDetails, shouldAutoplay: boolean, onEnded: () => void) => {
@@ -692,6 +832,15 @@ function App() {
     audio.currentTime = value
     setProgress(value)
   }
+
+  const handleAudioQualityChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const selectedQuality = event.target.value as AudioQuality
+      console.log('Audio quality switched to:', selectedQuality)
+      setAudioQuality(selectedQuality)
+    },
+    [setAudioQuality]
+  )
 
   const handleVolumeChange = (value: number) => {
     setVolume(value)
@@ -971,8 +1120,23 @@ function App() {
                 style={isPlayerReady ? timelineStyle : undefined}
                 disabled={!isPlayerReady}
               />
-              <div className="time-row" aria-hidden="true">
+              <div className="time-row">
                 <span className="time time-start">{formatTime(progressValue)}</span>
+                <div className="audio-quality-select-wrapper">
+                  <select
+                    id={qualitySelectId}
+                    className="audio-quality-select"
+                    value={audioQuality}
+                    onChange={handleAudioQualityChange}
+                    aria-label="选择音质"
+                  >
+                    {AUDIO_QUALITY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <span className="time time-end">{formatTime(progressMax)}</span>
               </div>
             </div>
