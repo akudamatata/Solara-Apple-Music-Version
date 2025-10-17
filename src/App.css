@@ -452,6 +452,7 @@
   padding: 0 14px;
   font-size: 0.85rem;
   white-space: nowrap;
+  justify-content: center;
 }
 
 .audio-quality-select-wrapper .audio-quality-dd .source-dd__menu {
