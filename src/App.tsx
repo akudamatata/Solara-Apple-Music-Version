@@ -1318,13 +1318,13 @@ function App() {
       }
 
       toast('已更新热门前 50 首歌曲 🎧', {
-        className: 'black-toast',
-        duration: 2500,
+        className: 'apple-toast',
+        duration: 2800,
       })
     } catch (err) {
       toast('获取热门歌曲失败，请稍后再试', {
-        className: 'black-toast',
-        duration: 2500,
+        className: 'apple-toast',
+        duration: 2800,
       })
       console.error(err)
     } finally {
@@ -1805,7 +1805,7 @@ function App() {
           <span className="sr-only">显示播放列表</span>
         </button>
       </div>
-      <Toaster position="top-center" toastOptions={{ className: 'black-toast', duration: 2500 }} />
+      <Toaster position="top-right" toastOptions={{ className: 'apple-toast', duration: 2800 }} />
     </div>
   )
 }

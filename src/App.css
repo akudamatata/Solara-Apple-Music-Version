@@ -731,12 +731,31 @@
   outline-offset: 3px;
 }
 
-.black-toast {
-  background: rgba(0, 0, 0, 0.9);
-  color: #fff;
-  border-radius: 8px;
-  font-size: 14px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+.apple-toast {
+  background: rgba(44, 44, 46, 0.82);
+  color: #f5f5f7;
+  border-radius: 18px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 14px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.apple-toast::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #64d2ff, #7d7aff);
+  box-shadow: 0 0 8px rgba(125, 122, 255, 0.4);
 }
 
 .player-volume {
