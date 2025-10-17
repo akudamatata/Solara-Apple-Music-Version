@@ -32,16 +32,23 @@ interface SearchResult {
   source: string
 }
 
-interface TrackDetails {
+interface PlaylistEntry {
   id: string
   title: string
   artists: string
   album: string
   source: string
-  artworkUrl: string
+  artworkUrl?: string
+  audioUrl?: string
+  lyrics?: LyricLine[]
+  duration?: number
+  lyricId?: string
+  picId?: string
+}
+
+interface TrackDetails extends PlaylistEntry {
   audioUrl: string
   lyrics: LyricLine[]
-  duration?: number
 }
 
 const STORAGE_KEYS = {
@@ -269,10 +276,10 @@ function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const currentTrackRef = useRef<TrackDetails | null>(null)
-  const playlistRef = useRef<TrackDetails[]>([])
+  const playlistRef = useRef<PlaylistEntry[]>([])
   const activeIndexRef = useRef(-1)
   const playTrackRef = useRef<
-    ((details: TrackDetails, index: number, shouldAutoplay?: boolean) => Promise<void>) | null
+    ((details: PlaylistEntry, index: number, shouldAutoplay?: boolean) => Promise<void>) | null
   >(null)
   const audioSetupRef = useRef(false)
   const explorePulseTimeoutRef = useRef<number | null>(null)
@@ -284,7 +291,7 @@ function App() {
   const [volume, setVolume] = useState(0.8)
   const [activeLyricIndex, setActiveLyricIndex] = useState(0)
   const [activePanel, setActivePanel] = useState<'playlist' | 'lyrics'>('lyrics')
-  const [playlist, setPlaylist] = useState<TrackDetails[]>([])
+  const [playlist, setPlaylist] = useState<PlaylistEntry[]>([])
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null)
   const [palette, setPalette] = useState<BackgroundPalette>(DEFAULT_PALETTE)
   const [generatedBg, setGeneratedBg] = useState<string | null>(null)
@@ -319,7 +326,7 @@ function App() {
       }
     }
 
-    const savedPlaylist = readJSON<TrackDetails[]>(STORAGE_KEYS.playlist)
+    const savedPlaylist = readJSON<PlaylistEntry[]>(STORAGE_KEYS.playlist)
     if (Array.isArray(savedPlaylist) && savedPlaylist.length) {
       setPlaylist(savedPlaylist)
       playlistRef.current = savedPlaylist
@@ -936,35 +943,42 @@ function App() {
     }
   }, [attachAudio, handleAutoAdvance, volume])
 
-  const buildTrackDetails = useCallback(async (track: SearchResult): Promise<TrackDetails> => {
-    const bitrate = QUALITY_TO_BR[audioQuality]
-    const [urlInfo, lyricInfo, picInfo] = await Promise.all([
-      fetchJson<{ url: string }>(
-        `${API_BASE}?types=url&source=${track.source || DEFAULT_SOURCE}&id=${track.id}&br=${bitrate}`,
-      ),
-      fetchJson<{ lyric?: string | null; tlyric?: string | null }>(
-        `${API_BASE}?types=lyric&source=${track.source || DEFAULT_SOURCE}&id=${track.lyric_id || track.id}`,
-      ),
-      fetchJson<{ url?: string }>(
-        `${API_BASE}?types=pic&source=${track.source || DEFAULT_SOURCE}&id=${track.pic_id}&size=500`,
-      ),
-    ])
+  const buildTrackDetails = useCallback(
+    async (track: SearchResult | PlaylistEntry): Promise<TrackDetails> => {
+      const bitrate = QUALITY_TO_BR[audioQuality]
+      const source = track.source || DEFAULT_SOURCE
+      const lyricId = 'lyric_id' in track ? track.lyric_id : track.lyricId || track.id
+      const picId = 'pic_id' in track ? track.pic_id : track.picId || track.id
+      const baseTitle = 'name' in track ? track.name : track.title
+      const baseArtists = 'artist' in track ? track.artist.join('、') : track.artists
 
-    const lyrics = mergeLyrics(lyricInfo.lyric, lyricInfo.tlyric)
-    const artworkUrl = picInfo.url ?? ''
-    const artists = track.artist.join('、')
+      const [urlInfo, lyricInfo, picInfo] = await Promise.all([
+        fetchJson<{ url: string }>(`${API_BASE}?types=url&source=${source}&id=${track.id}&br=${bitrate}`),
+        fetchJson<{ lyric?: string | null; tlyric?: string | null }>(
+          `${API_BASE}?types=lyric&source=${source}&id=${lyricId}`,
+        ),
+        fetchJson<{ url?: string }>(`${API_BASE}?types=pic&source=${source}&id=${picId}&size=500`),
+      ])
 
-    return {
-      id: String(track.id),
-      title: track.name,
-      artists,
-      album: track.album,
-      source: track.source,
-      artworkUrl,
-      audioUrl: proxifyAudioUrl(urlInfo.url),
-      lyrics,
-    }
-  }, [audioQuality])
+      const lyrics = mergeLyrics(lyricInfo.lyric, lyricInfo.tlyric)
+      const artworkUrl = picInfo.url ?? ('artworkUrl' in track ? track.artworkUrl ?? '' : '')
+
+      return {
+        id: String(track.id),
+        title: baseTitle,
+        artists: baseArtists,
+        album: track.album,
+        source,
+        artworkUrl,
+        audioUrl: proxifyAudioUrl(urlInfo.url),
+        lyrics,
+        duration: 'duration' in track ? track.duration : undefined,
+        lyricId: lyricId ? String(lyricId) : undefined,
+        picId: picId ? String(picId) : undefined,
+      }
+    },
+    [audioQuality],
+  )
 
   const activateTrack = useCallback(
     async (details: TrackDetails, shouldAutoplay: boolean) => {
@@ -986,18 +1000,40 @@ function App() {
   )
 
   const playTrack = useCallback(
-    async (details: TrackDetails, index: number, shouldAutoplay = true) => {
+    async (entry: PlaylistEntry, index: number, shouldAutoplay = true) => {
       setIsLoadingTrack(true)
       setError(null)
       setProgress(0)
       setDuration(0)
       setActiveLyricIndex(0)
       setIsBuffering(true)
-      const trackIdentifier = getTrackKey(details)
+      const trackIdentifier = getTrackKey(entry)
       setCurrentTrackId(trackIdentifier)
       activeIndexRef.current = index
 
       try {
+        let details: TrackDetails
+        if (entry.audioUrl) {
+          details = {
+            ...entry,
+            audioUrl: entry.audioUrl,
+            lyrics: entry.lyrics ?? [],
+          }
+        } else {
+          const hydrated = await buildTrackDetails(entry)
+          details = {
+            ...entry,
+            ...hydrated,
+          }
+        }
+
+        if (playlistRef.current.length) {
+          playlistRef.current = playlistRef.current.map((track, trackIndex) =>
+            trackIndex === index ? details : track,
+          )
+          setPlaylist(playlistRef.current)
+        }
+
         await activateTrack(details, shouldAutoplay)
       } catch (err) {
         console.error(err)
@@ -1007,7 +1043,7 @@ function App() {
         setIsBuffering(false)
       }
     },
-    [activateTrack],
+    [activateTrack, buildTrackDetails],
   )
 
   useEffect(() => {
@@ -1285,40 +1321,30 @@ function App() {
         throw new Error('No playable tracks received')
       }
 
-      const detailedTracks = await Promise.all(
-        normalizedResults.map(async (result) => {
-          try {
-            const details = await buildTrackDetails(result)
-            const matchingRaw = rawTracks.find((item) => {
-              const itemId = item?.id ?? item?.trackId
-              return String(itemId ?? '') === String(result.id)
-            })
-            const durationMs = Number(matchingRaw?.dt ?? matchingRaw?.duration ?? 0)
-            return durationMs > 0
-              ? { ...details, duration: Math.round(durationMs / 1000) }
-              : details
-          } catch (err) {
-            console.error(err)
-            return null
-          }
-        }),
-      )
+      const baseTracks: PlaylistEntry[] = normalizedResults.map((result) => {
+        const matchingRaw = rawTracks.find((item) => {
+          const itemId = item?.id ?? item?.trackId
+          return String(itemId ?? '') === String(result.id)
+        })
+        const durationMs = Number(matchingRaw?.dt ?? matchingRaw?.duration ?? 0)
+        return {
+          id: String(result.id),
+          title: result.name,
+          artists: result.artist.join('、'),
+          album: result.album,
+          source: result.source || DEFAULT_SOURCE,
+          lyricId: result.lyric_id,
+          picId: result.pic_id,
+          duration: durationMs > 0 ? Math.round(durationMs / 1000) : undefined,
+          lyrics: [],
+        }
+      })
 
-      const validTracks = detailedTracks.filter((track): track is TrackDetails => Boolean(track?.audioUrl))
-
-      if (!validTracks.length) {
-        throw new Error('No playable tracks built')
-      }
-
-      playlistRef.current = validTracks
-      setPlaylist(validTracks)
-
-      if (!currentTrackRef.current && validTracks[0]) {
-        await playTrack(validTracks[0], 0)
-      }
+      playlistRef.current = baseTracks
+      setPlaylist(baseTracks)
 
       toast('已更新热门前 50 首歌曲 🎧', {
-        className: 'apple-toast',
+        className: 'black-toast',
         duration: 2800,
       })
     } catch (err) {
@@ -1330,11 +1356,7 @@ function App() {
     } finally {
       setIsExploring(false)
     }
-  }, [
-    buildTrackDetails,
-    isExploring,
-    playTrack,
-  ])
+  }, [isExploring])
 
   const handlePrevious = useCallback(() => {
     const list = playlistRef.current
@@ -1546,7 +1568,9 @@ function App() {
             <div className="player-controls control-row" role="group" aria-label="播放控制">
               <button
                 type="button"
-                className={`control-button icon-btn shuffle${isPlayerReady && isShuffle ? ' active' : ''}`}
+                className={`control-button icon-btn line-toggle shuffle${
+                  isPlayerReady && isShuffle ? ' active' : ''
+                }`}
                 onClick={toggleShuffle}
                 aria-pressed={isPlayerReady && isShuffle}
                 aria-label={shuffleLabel}
@@ -1585,7 +1609,9 @@ function App() {
               </div>
               <button
                 type="button"
-                className={`control-button icon-btn repeat${isPlayerReady && repeatMode !== 'none' ? ' active' : ''}`}
+                className={`control-button icon-btn line-toggle repeat${
+                  isPlayerReady && repeatMode !== 'none' ? ' active' : ''
+                }`}
                 onClick={cycleRepeat}
                 aria-label={repeatAriaLabel}
                 aria-pressed={isPlayerReady && repeatMode !== 'none'}

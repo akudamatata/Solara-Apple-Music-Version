@@ -599,8 +599,7 @@
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
-.control-button.shuffle,
-.control-button.repeat {
+.control-button.line-toggle {
   width: 48px;
   height: 48px;
   border-radius: 14px;
@@ -608,39 +607,48 @@
   box-shadow: none;
   border: none;
   backdrop-filter: none;
-  opacity: 0.9;
-  transition: color 0.25s ease, opacity 0.25s ease;
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.2s ease, transform 0.2s ease, filter 0.3s ease, opacity 0.2s ease;
 }
 
-.control-button.shuffle svg,
-.control-button.repeat svg {
+.control-button.line-toggle::before {
+  display: none;
+}
+
+.control-button.line-toggle svg {
   width: 24px;
   height: 24px;
   filter: none;
+  transition: color 0.2s ease, transform 0.2s ease, filter 0.3s ease;
 }
 
-.control-button.shuffle:hover,
-.control-button.shuffle:focus-visible,
-.control-button.repeat:hover,
-.control-button.repeat:focus-visible {
+.control-button.line-toggle:hover,
+.control-button.line-toggle:focus-visible {
   background: none;
   box-shadow: none;
-  transform: none;
-  opacity: 1;
+  color: rgba(255, 255, 255, 0.85);
+  transform: scale(1.05);
 }
 
-.control-button.shuffle.active,
-.control-button.repeat.active {
+.control-button.line-toggle:active {
+  transform: scale(0.95);
+}
+
+.control-button.line-toggle.active {
   background: none;
   box-shadow: none;
-  color: var(--accent-color);
-  opacity: 1;
+  color: #00c2ff;
 }
 
-.control-button.shuffle:disabled,
-.control-button.repeat:disabled {
+.control-button.line-toggle.active svg {
+  filter: drop-shadow(0 0 5px rgba(0, 194, 255, 0.6));
+}
+
+.control-button.line-toggle:disabled {
+  color: rgba(255, 255, 255, 0.35);
   opacity: 0.45;
-  box-shadow: none;
+  filter: none;
+  transform: none;
 }
 
 .play-toggle {
@@ -1368,7 +1376,8 @@
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding-right: clamp(0.45rem, 1vw, 0.9rem);
+  padding-right: var(--page-gutter);
+  box-sizing: border-box;
 }
 
 .playlist-view::-webkit-scrollbar {
@@ -1397,7 +1406,7 @@
   gap: clamp(0.75rem, 1.8vw, 1.2rem);
   align-items: center;
   height: 64px;
-  padding: 0 1.2rem;
+  padding: 0 1.2rem 0 0;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.06);
