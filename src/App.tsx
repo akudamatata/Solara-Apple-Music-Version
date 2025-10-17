@@ -39,7 +39,23 @@ interface TrackDetails {
   artworkUrl: string
   audioUrl: string
   lyrics: LyricLine[]
+  duration?: number
 }
+
+const STORAGE_KEYS = {
+  playlist: 'playlist',
+  currentTrackId: 'currentTrackId',
+  playProgress: 'playProgress',
+  volume: 'volume',
+  repeatMode: 'repeatMode',
+  isShuffle: 'isShuffle',
+  audioQuality: 'audioQuality',
+  currentTrack: 'currentTrack',
+} as const
+
+const VALID_REPEAT_MODES = new Set<'none' | 'one' | 'all'>(['none', 'one', 'all'])
+
+const VALID_AUDIO_QUALITIES = new Set<AudioQuality>(['standard', 'high', 'very_high', 'lossless'])
 
 const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
   const response = await fetch(url, { signal })
@@ -275,11 +291,140 @@ function App() {
   const searchBarRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const storage = window.localStorage
+
+    const readJSON = <T,>(key: (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]): T | null => {
+      const raw = storage.getItem(key)
+      if (!raw) {
+        return null
+      }
+      try {
+        return JSON.parse(raw) as T
+      } catch (error) {
+        console.warn(`Failed to parse persisted ${key}`, error)
+        return null
+      }
+    }
+
+    const savedPlaylist = readJSON<TrackDetails[]>(STORAGE_KEYS.playlist)
+    if (Array.isArray(savedPlaylist) && savedPlaylist.length) {
+      setPlaylist(savedPlaylist)
+      playlistRef.current = savedPlaylist
+    }
+
+    const savedTrack = readJSON<TrackDetails>(STORAGE_KEYS.currentTrack)
+    if (savedTrack && typeof savedTrack.id === 'string') {
+      setCurrentTrack(savedTrack)
+      currentTrackRef.current = savedTrack
+      if (typeof savedTrack.duration === 'number' && Number.isFinite(savedTrack.duration)) {
+        setDuration(savedTrack.duration)
+      }
+    }
+
+    const savedTrackId = storage.getItem(STORAGE_KEYS.currentTrackId)
+    if (savedTrackId) {
+      setCurrentTrackId(savedTrackId)
+    }
+
+    const savedProgress = storage.getItem(STORAGE_KEYS.playProgress)
+    if (savedProgress !== null) {
+      const parsedProgress = Number(savedProgress)
+      if (!Number.isNaN(parsedProgress) && parsedProgress >= 0) {
+        setProgress(parsedProgress)
+      }
+    }
+
+    const savedVolume = storage.getItem(STORAGE_KEYS.volume)
+    if (savedVolume !== null) {
+      const parsedVolume = Number(savedVolume)
+      if (!Number.isNaN(parsedVolume)) {
+        const clampedVolume = Math.min(Math.max(parsedVolume, 0), 1)
+        setVolume(clampedVolume)
+      }
+    }
+
+    const savedRepeat = storage.getItem(STORAGE_KEYS.repeatMode)
+    if (savedRepeat && VALID_REPEAT_MODES.has(savedRepeat as 'none' | 'one' | 'all')) {
+      setRepeatMode(savedRepeat as 'none' | 'one' | 'all')
+    }
+
+    const savedShuffle = storage.getItem(STORAGE_KEYS.isShuffle)
+    if (savedShuffle === 'true' || savedShuffle === 'false') {
+      setIsShuffle(savedShuffle === 'true')
+    }
+
+    const savedQuality = storage.getItem(STORAGE_KEYS.audioQuality)
+    if (savedQuality && VALID_AUDIO_QUALITIES.has(savedQuality as AudioQuality)) {
+      setAudioQuality(savedQuality as AudioQuality)
+    }
+  }, [])
+
+  useEffect(() => {
     currentTrackRef.current = currentTrack
   }, [currentTrack])
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (currentTrack) {
+      window.localStorage.setItem(STORAGE_KEYS.currentTrack, JSON.stringify(currentTrack))
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.currentTrack)
+    }
+  }, [currentTrack])
+
+  useEffect(() => {
+    const storedTrack = currentTrackRef.current
+    if (!storedTrack) {
+      return
+    }
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return
+    }
+
+    if (storedTrack.duration === duration) {
+      return
+    }
+
+    const updatedTrack: TrackDetails = { ...storedTrack, duration }
+    currentTrackRef.current = updatedTrack
+    setCurrentTrack(updatedTrack)
+    const updatedKey = getTrackKey(updatedTrack)
+    let playlistUpdated = false
+    const nextPlaylist = playlistRef.current.map((track) => {
+      if (getTrackKey(track) === updatedKey) {
+        playlistUpdated = true
+        return { ...track, duration }
+      }
+      return track
+    })
+    if (playlistUpdated) {
+      playlistRef.current = nextPlaylist
+      setPlaylist(nextPlaylist)
+    }
+  }, [duration])
+
+  useEffect(() => {
     playlistRef.current = playlist
+  }, [playlist])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (playlist.length) {
+      window.localStorage.setItem(STORAGE_KEYS.playlist, JSON.stringify(playlist))
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.playlist)
+    }
   }, [playlist])
 
   useEffect(() => {
@@ -287,15 +432,41 @@ function App() {
   }, [playlist, currentTrackId])
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (currentTrackId) {
+      window.localStorage.setItem(STORAGE_KEYS.currentTrackId, currentTrackId)
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.currentTrackId)
+    }
+  }, [currentTrackId])
+
+  useEffect(() => {
     shuffleEnabledRef.current = isShuffle
     if (!isShuffle) {
       shuffleHistoryRef.current = []
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.isShuffle, String(isShuffle))
     }
   }, [isShuffle])
 
   useEffect(() => {
     repeatModeRef.current = repeatMode
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.repeatMode, repeatMode)
+    }
   }, [repeatMode])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.localStorage.setItem(STORAGE_KEYS.audioQuality, audioQuality)
+  }, [audioQuality])
 
   useEffect(() => {
     const current = currentTrackRef.current
@@ -520,7 +691,24 @@ function App() {
     if (audioRef.current) {
       audioRef.current.volume = volume
     }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEYS.volume, String(volume))
+    }
   }, [volume])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const handler = window.setTimeout(() => {
+      window.localStorage.setItem(STORAGE_KEYS.playProgress, String(Math.max(progress, 0)))
+    }, 5000)
+
+    return () => {
+      window.clearTimeout(handler)
+    }
+  }, [progress])
 
   useEffect(() => {
     const controller = new AbortController()
