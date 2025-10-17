@@ -435,8 +435,8 @@
 
 .audio-quality-select-wrapper {
   position: relative;
-  width: 7.25em;
-  min-width: 7.25em;
+  width: 8.5em;
+  min-width: 8.5em;
   justify-self: center;
   display: flex;
   align-items: center;
@@ -451,6 +451,13 @@
   height: 36px;
   padding: 0 34px 0 14px;
   font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.audio-quality-select-wrapper .audio-quality-dd .source-dd__caret {
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.85);
 }
 
 .audio-quality-select-wrapper .audio-quality-dd .source-dd__menu {
