@@ -432,6 +432,37 @@
   padding-bottom: 0;
 }
 
+
+.audio-quality-select {
+  appearance: none;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.8rem;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  width: 6.5em;
+  min-height: 0;
+  text-align: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  backdrop-filter: blur(12px) saturate(140%);
+}
+
+.audio-quality-select:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.audio-quality-select:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(255, 109, 155, 0.28);
+}
+
 .player-progress .progress {
   width: 100%;
   display: block;
@@ -439,12 +470,13 @@
 
 .time-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: max-content 1fr max-content;
   align-items: center;
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.78);
   margin-top: var(--stack-gap-xs);
+  gap: clamp(0.4rem, 1.2vw, 0.8rem);
 }
 
 .time-row span {
@@ -457,6 +489,10 @@
 
 .time-row .time-end {
   justify-self: end;
+}
+
+.time-row .audio-quality-select {
+  justify-self: center;
 }
 
 .player-controls {
@@ -1824,6 +1860,15 @@ input[type='range']::-moz-range-track {
 @media (max-width: 620px) {
   .player-controls {
     column-gap: clamp(0.6rem, 4vw, 1rem);
+  }
+
+  .time-row {
+    grid-template-columns: max-content 1fr max-content;
+    gap: clamp(0.4rem, 2vw, 0.6rem);
+  }
+
+  .time-row .audio-quality-select {
+    font-size: 0.78rem;
   }
 
   .segment {
