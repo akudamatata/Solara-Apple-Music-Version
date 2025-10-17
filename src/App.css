@@ -432,50 +432,35 @@
   padding-bottom: 0;
 }
 
-.audio-quality-control {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: clamp(0.6rem, 1.2vw, 0.9rem);
-  width: 100%;
-  max-width: min(var(--progress-width), 600px);
-  margin: var(--stack-gap-sm) 0;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.audio-quality-label {
-  font-size: clamp(0.9rem, 1vw, 1rem);
-  letter-spacing: 0.02em;
-  font-weight: 500;
-  white-space: nowrap;
-}
 
 .audio-quality-select {
   appearance: none;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 0.55rem 1.1rem;
-  background: rgba(18, 16, 38, 0.72);
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-family: inherit;
-  line-height: 1.3;
+  line-height: 1.2;
   cursor: pointer;
-  min-height: 44px;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
-  backdrop-filter: blur(18px) saturate(140%);
+  width: 6.5em;
+  min-height: 0;
+  text-align: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  backdrop-filter: blur(12px) saturate(140%);
 }
 
 .audio-quality-select:hover {
   border-color: rgba(255, 255, 255, 0.32);
-  background: rgba(26, 24, 48, 0.82);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .audio-quality-select:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: 2px;
   border-color: transparent;
-  box-shadow: 0 0 0 3px rgba(255, 109, 155, 0.32);
+  box-shadow: 0 0 0 3px rgba(255, 109, 155, 0.28);
 }
 
 .player-progress .progress {
@@ -485,12 +470,13 @@
 
 .time-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: max-content 1fr max-content;
   align-items: center;
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.78);
   margin-top: var(--stack-gap-xs);
+  gap: clamp(0.4rem, 1.2vw, 0.8rem);
 }
 
 .time-row span {
@@ -503,6 +489,10 @@
 
 .time-row .time-end {
   justify-self: end;
+}
+
+.time-row .audio-quality-select {
+  justify-self: center;
 }
 
 .player-controls {
@@ -1872,13 +1862,13 @@ input[type='range']::-moz-range-track {
     column-gap: clamp(0.6rem, 4vw, 1rem);
   }
 
-  .audio-quality-control {
-    grid-template-columns: 1fr;
-    gap: clamp(0.5rem, 3vw, 0.8rem);
+  .time-row {
+    grid-template-columns: max-content 1fr max-content;
+    gap: clamp(0.4rem, 2vw, 0.6rem);
   }
 
-  .audio-quality-label {
-    font-size: 0.88rem;
+  .time-row .audio-quality-select {
+    font-size: 0.78rem;
   }
 
   .segment {

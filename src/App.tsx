@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ChangeEvent } from 'react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import Lyrics from './components/Lyrics'
@@ -712,6 +712,15 @@ function App() {
     setProgress(value)
   }
 
+  const handleAudioQualityChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const selectedQuality = event.target.value as AudioQuality
+      console.log('Audio quality switched to:', selectedQuality)
+      setAudioQuality(selectedQuality)
+    },
+    [setAudioQuality]
+  )
+
   const handleVolumeChange = (value: number) => {
     setVolume(value)
   }
@@ -990,8 +999,21 @@ function App() {
                 style={isPlayerReady ? timelineStyle : undefined}
                 disabled={!isPlayerReady}
               />
-              <div className="time-row" aria-hidden="true">
+              <div className="time-row">
                 <span className="time time-start">{formatTime(progressValue)}</span>
+                <select
+                  id={qualitySelectId}
+                  className="audio-quality-select"
+                  value={audioQuality}
+                  onChange={handleAudioQualityChange}
+                  aria-label="选择音质"
+                >
+                  {AUDIO_QUALITY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
                 <span className="time time-end">{formatTime(progressMax)}</span>
               </div>
             </div>
