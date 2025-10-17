@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
 import type { CSSProperties } from 'react'
-import { Radar } from 'lucide-react'
+import { Download, Radar, Trash2, X } from 'lucide-react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import Lyrics from './components/Lyrics'
@@ -1188,6 +1188,73 @@ function App() {
     [playTrack],
   )
 
+  const handleClearPlaylist = useCallback(() => {
+    if (!playlistRef.current.length) {
+      return
+    }
+    if (!window.confirm('确定要清空播放列表吗？')) {
+      return
+    }
+
+    teardownAudio()
+    playlistRef.current = []
+    setPlaylist([])
+    setCurrentTrack(null)
+    currentTrackRef.current = null
+    setCurrentTrackId(null)
+    activeIndexRef.current = -1
+    setProgress(0)
+    setDuration(0)
+    setActiveLyricIndex(0)
+    setIsPlaying(false)
+    setIsBuffering(false)
+    window.localStorage.removeItem(STORAGE_KEYS.playlist)
+    window.localStorage.removeItem(STORAGE_KEYS.currentTrack)
+    window.localStorage.removeItem(STORAGE_KEYS.currentTrackId)
+    window.localStorage.removeItem(STORAGE_KEYS.playProgress)
+    toast('播放列表已清空', { className: 'black-toast' })
+  }, [teardownAudio])
+
+  const handleDownloadTrack = useCallback((track: PlaylistEntry) => {
+    console.log(`Downloading: ${track.title}`)
+    toast(`开始下载「${track.title}」`, { className: 'black-toast' })
+  }, [])
+
+  const handleRemoveTrack = useCallback(
+    (trackKey: string) => {
+      const target = playlistRef.current.find((item) => getTrackKey(item) === trackKey)
+      if (!target) {
+        return
+      }
+      if (!window.confirm(`确定要将「${target.title}」从播放列表中移除吗？`)) {
+        return
+      }
+
+      const nextList = playlistRef.current.filter((item) => getTrackKey(item) !== trackKey)
+      playlistRef.current = nextList
+      setPlaylist(nextList)
+
+      if (currentTrackRef.current && getTrackKey(currentTrackRef.current) === trackKey) {
+        teardownAudio()
+        setCurrentTrack(null)
+        currentTrackRef.current = null
+        setCurrentTrackId(null)
+        activeIndexRef.current = -1
+        setProgress(0)
+        setDuration(0)
+        setActiveLyricIndex(0)
+        setIsPlaying(false)
+        setIsBuffering(false)
+        window.localStorage.removeItem(STORAGE_KEYS.currentTrack)
+        window.localStorage.removeItem(STORAGE_KEYS.currentTrackId)
+        window.localStorage.removeItem(STORAGE_KEYS.playProgress)
+      }
+
+      toast('已从播放列表移除', { className: 'black-toast' })
+    },
+    [teardownAudio],
+  )
+
   const handleLoadMoreResults = useCallback(() => {
     setSearchLimit((prev) => prev + SEARCH_PAGE_SIZE)
   }, [])
@@ -1745,21 +1812,39 @@ function App() {
             >
               {activePanel === 'playlist' ? (
                 <div className="playlist-view">
-                  <div className="results-meta">
-                    <span className="eyebrow">播放列表</span>
-                    <span className="result-count">{playlist.length} 首歌曲</span>
+                  <div className="list-header">
+                    <div className="results-meta">
+                      <span className="eyebrow">播放列表</span>
+                      <span className="result-count">{playlist.length} 首歌曲</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="clear-playlist-btn"
+                      onClick={handleClearPlaylist}
+                      title="清空播放列表"
+                      disabled={!playlist.length}
+                    >
+                      <Trash2 aria-hidden="true" size={18} strokeWidth={1.8} />
+                      <span>清空</span>
+                    </button>
                   </div>
                   {playlist.map((track, index) => {
                     const trackKey = getTrackKey(track)
                     const isActive = trackKey === currentTrackId
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={trackKey}
                         role="option"
                         aria-selected={isActive}
                         className={`track-item${isActive ? ' active' : ''}`}
                         onClick={() => handlePlaylistSelect(index)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            handlePlaylistSelect(index)
+                          }
+                        }}
+                        tabIndex={0}
                         title={`${track.title} · ${track.artists} · ${track.album}`}
                       >
                         <div className="track-thumb" aria-hidden="true">
@@ -1778,10 +1863,33 @@ function App() {
                           <span className="track-title track__title">{track.title}</span>
                           <span className="track-artist">{track.artists}</span>
                         </div>
-                        <span className="track-duration" aria-hidden={!isActive}>
-                          {isActive && duration ? formatTime(duration) : '--:--'}
-                        </span>
-                      </button>
+                        <div className="song-actions">
+                          <button
+                            type="button"
+                            className="action-btn"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleDownloadTrack(track)
+                            }}
+                            aria-label={`下载 ${track.title}`}
+                            title="下载"
+                          >
+                            <Download aria-hidden="true" size={18} strokeWidth={1.9} />
+                          </button>
+                          <button
+                            type="button"
+                            className="action-btn delete-action"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleRemoveTrack(trackKey)
+                            }}
+                            aria-label={`从播放列表移除 ${track.title}`}
+                            title="删除"
+                          >
+                            <X aria-hidden="true" size={18} strokeWidth={1.9} />
+                          </button>
+                        </div>
+                      </div>
                     )
                   })}
                   {!playlist.length && (
