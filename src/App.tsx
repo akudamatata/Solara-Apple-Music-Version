@@ -1568,7 +1568,9 @@ function App() {
             <div className="player-controls control-row" role="group" aria-label="播放控制">
               <button
                 type="button"
-                className={`control-button icon-btn shuffle${isPlayerReady && isShuffle ? ' active' : ''}`}
+                className={`control-button icon-btn line-toggle shuffle${
+                  isPlayerReady && isShuffle ? ' active' : ''
+                }`}
                 onClick={toggleShuffle}
                 aria-pressed={isPlayerReady && isShuffle}
                 aria-label={shuffleLabel}
@@ -1607,7 +1609,9 @@ function App() {
               </div>
               <button
                 type="button"
-                className={`control-button icon-btn repeat${isPlayerReady && repeatMode !== 'none' ? ' active' : ''}`}
+                className={`control-button icon-btn line-toggle repeat${
+                  isPlayerReady && repeatMode !== 'none' ? ' active' : ''
+                }`}
                 onClick={cycleRepeat}
                 aria-label={repeatAriaLabel}
                 aria-pressed={isPlayerReady && repeatMode !== 'none'}
