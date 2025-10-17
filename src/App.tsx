@@ -671,13 +671,20 @@ function App() {
   )
 
   const playTrack = useCallback(
-    async (details: TrackDetails, index: number, shouldAutoplay = true) => {
+    async (
+      details: TrackDetails,
+      index: number,
+      shouldAutoplay = true,
+      shouldSwitchPanel = true,
+    ) => {
       setIsLoadingTrack(true)
       setError(null)
       setProgress(0)
       setDuration(0)
       setActiveLyricIndex(0)
-      setActivePanel('lyrics')
+      if (shouldSwitchPanel) {
+        setActivePanel('lyrics')
+      }
       setIsBuffering(true)
       const trackIdentifier = getTrackKey(details)
       setCurrentTrackId(trackIdentifier)
@@ -859,7 +866,7 @@ function App() {
           shuffleHistoryRef.current.push(getTrackKey(current))
         }
       }
-      await playTrack(track, index)
+      await playTrack(track, index, true, false)
     },
     [playTrack],
   )
