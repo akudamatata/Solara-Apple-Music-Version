@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
+import { Toaster, toast } from 'react-hot-toast'
 import type { CSSProperties } from 'react'
 import { Radar } from 'lucide-react'
 import './App.css'
@@ -264,18 +265,16 @@ function App() {
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('very_high')
   const [isExploring, setIsExploring] = useState(false)
   const [isExplorePulsing, setIsExplorePulsing] = useState(false)
-  const [toastState, setToastState] = useState<{
-    type: 'success' | 'error'
-    message: string
-    key: number
-  } | null>(null)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const currentTrackRef = useRef<TrackDetails | null>(null)
   const playlistRef = useRef<TrackDetails[]>([])
   const activeIndexRef = useRef(-1)
-  const toastTimeoutRef = useRef<number | null>(null)
+  const playTrackRef = useRef<
+    ((details: TrackDetails, index: number, shouldAutoplay?: boolean) => Promise<void>) | null
+  >(null)
+  const audioSetupRef = useRef(false)
   const explorePulseTimeoutRef = useRef<number | null>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
@@ -819,6 +818,124 @@ function App() {
     [handleTimeUpdate],
   )
 
+  const handleAutoAdvance = useCallback(() => {
+    const list = playlistRef.current
+    if (!list.length) {
+      return
+    }
+
+    const play = playTrackRef.current
+    if (!play) {
+      return
+    }
+
+    const currentIndex = activeIndexRef.current
+    const repeatState = repeatModeRef.current
+    const shuffleOn = shuffleEnabledRef.current
+
+    if (repeatState === 'one') {
+      let repeatIndex = currentIndex
+      if (repeatIndex < 0 && currentTrackRef.current) {
+        const currentTrack = currentTrackRef.current
+        repeatIndex = list.findIndex((item) => getTrackKey(item) === getTrackKey(currentTrack))
+      }
+      const repeatTrack =
+        (repeatIndex >= 0 && repeatIndex < list.length ? list[repeatIndex] : null) ??
+        currentTrackRef.current
+      if (repeatTrack) {
+        play(repeatTrack, repeatIndex >= 0 ? repeatIndex : 0).catch(() => undefined)
+      }
+      return
+    }
+
+    let targetIndex: number | null = null
+
+    if (shuffleOn && list.length) {
+      const availableIndexes = list.map((_, idx) => idx).filter((idx) => idx !== currentIndex)
+      if (availableIndexes.length) {
+        targetIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)]
+      } else if (repeatState === 'all' && currentIndex >= 0) {
+        targetIndex = currentIndex
+      }
+      if (
+        targetIndex !== null &&
+        currentIndex !== -1 &&
+        targetIndex >= 0 &&
+        targetIndex < list.length &&
+        targetIndex !== currentIndex
+      ) {
+        const currentTrack = list[currentIndex]
+        if (currentTrack) {
+          shuffleHistoryRef.current.push(getTrackKey(currentTrack))
+        }
+      }
+    } else if (list.length) {
+      const nextIndex = currentIndex + 1
+      if (nextIndex < list.length) {
+        targetIndex = nextIndex
+      } else if (repeatState === 'all') {
+        targetIndex = 0
+      }
+    }
+
+    if (targetIndex === null || targetIndex === undefined) {
+      return
+    }
+
+    if (targetIndex >= 0 && targetIndex < list.length) {
+      const nextTrack = list[targetIndex]
+      if (nextTrack) {
+        play(nextTrack, targetIndex).catch(() => undefined)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (audioSetupRef.current) {
+      return
+    }
+
+    audioSetupRef.current = true
+
+    let audio = audioRef.current
+    if (!audio) {
+      audio = new Audio()
+      audioRef.current = audio
+    }
+
+    audio.crossOrigin = 'anonymous'
+    audio.volume = volume
+
+    cleanupRef.current?.()
+    attachAudio(audio, handleAutoAdvance)
+
+    const savedTrackRaw = window.localStorage.getItem(STORAGE_KEYS.currentTrack)
+    if (savedTrackRaw) {
+      try {
+        const savedTrack = JSON.parse(savedTrackRaw) as TrackDetails
+        if (savedTrack && savedTrack.audioUrl) {
+          audio.src = savedTrack.audioUrl
+          currentTrackRef.current = savedTrack
+          setCurrentTrack(savedTrack)
+          if (typeof savedTrack.duration === 'number' && Number.isFinite(savedTrack.duration)) {
+            setDuration(savedTrack.duration)
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to restore persisted track from storage', error)
+      }
+      return
+    }
+
+    if (currentTrackRef.current?.audioUrl) {
+      audio.src = currentTrackRef.current.audioUrl
+    }
+  }, [attachAudio, handleAutoAdvance, volume])
+
   const buildTrackDetails = useCallback(async (track: SearchResult): Promise<TrackDetails> => {
     const bitrate = QUALITY_TO_BR[audioQuality]
     const [urlInfo, lyricInfo, picInfo] = await Promise.all([
@@ -850,7 +967,7 @@ function App() {
   }, [audioQuality])
 
   const activateTrack = useCallback(
-    async (details: TrackDetails, shouldAutoplay: boolean, onEnded: () => void) => {
+    async (details: TrackDetails, shouldAutoplay: boolean) => {
       currentTrackRef.current = details
       setCurrentTrack(details)
 
@@ -859,93 +976,29 @@ function App() {
       audio.crossOrigin = 'anonymous'
       audio.volume = volume
       audioRef.current = audio
-      attachAudio(audio, onEnded)
+      attachAudio(audio, handleAutoAdvance)
 
       if (shouldAutoplay) {
         await audio.play().catch(() => undefined)
       }
     },
-    [attachAudio, teardownAudio, volume],
+    [attachAudio, handleAutoAdvance, teardownAudio, volume],
   )
 
   const playTrack = useCallback(
-    async (
-      details: TrackDetails,
-      index: number,
-      shouldAutoplay = true,
-      shouldSwitchPanel = true,
-    ) => {
+    async (details: TrackDetails, index: number, shouldAutoplay = true) => {
       setIsLoadingTrack(true)
       setError(null)
       setProgress(0)
       setDuration(0)
       setActiveLyricIndex(0)
-      if (shouldSwitchPanel) {
-        setActivePanel('lyrics')
-      }
       setIsBuffering(true)
       const trackIdentifier = getTrackKey(details)
       setCurrentTrackId(trackIdentifier)
       activeIndexRef.current = index
 
       try {
-        await activateTrack(details, shouldAutoplay, () => {
-          const list = playlistRef.current
-          const currentIndex = activeIndexRef.current
-          const repeatState = repeatModeRef.current
-          const shuffleOn = shuffleEnabledRef.current
-
-          if (repeatState === 'one') {
-            const repeatIndex = currentIndex >= 0 ? currentIndex : index
-            const repeatTrack = list[repeatIndex] ?? details
-            if (repeatTrack) {
-              playTrack(repeatTrack, repeatIndex >= 0 ? repeatIndex : index).catch(() => undefined)
-            }
-            return
-          }
-
-          let targetIndex: number | null = null
-
-          if (shuffleOn && list.length) {
-            const availableIndexes = list
-              .map((_, idx) => idx)
-              .filter((idx) => idx !== currentIndex)
-            if (availableIndexes.length) {
-              targetIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)]
-            } else if (repeatState === 'all' && currentIndex >= 0) {
-              targetIndex = currentIndex
-            }
-            if (
-              targetIndex !== null &&
-              currentIndex !== -1 &&
-              targetIndex >= 0 &&
-              targetIndex !== currentIndex
-            ) {
-              const currentTrack = list[currentIndex]
-              if (currentTrack) {
-                shuffleHistoryRef.current.push(getTrackKey(currentTrack))
-              }
-            }
-          } else if (list.length) {
-            const nextIndex = currentIndex + 1
-            if (nextIndex < list.length) {
-              targetIndex = nextIndex
-            } else if (repeatState === 'all') {
-              targetIndex = 0
-            }
-          }
-
-          if (targetIndex === null || targetIndex === undefined) {
-            return
-          }
-
-          if (targetIndex >= 0 && targetIndex < list.length) {
-            const nextTrack = list[targetIndex]
-            if (nextTrack) {
-              playTrack(nextTrack, targetIndex).catch(() => undefined)
-            }
-          }
-        })
+        await activateTrack(details, shouldAutoplay)
       } catch (err) {
         console.error(err)
         setError('载入歌曲时出现问题，请稍后再试。')
@@ -957,27 +1010,9 @@ function App() {
     [activateTrack],
   )
 
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    if (toastTimeoutRef.current !== null) {
-      window.clearTimeout(toastTimeoutRef.current)
-      toastTimeoutRef.current = null
-    }
-
-    const key = Date.now()
-    setToastState({ message, type, key })
-    toastTimeoutRef.current = window.setTimeout(() => {
-      setToastState(null)
-      toastTimeoutRef.current = null
-    }, 3600)
-  }, [])
-
-  const toast = useMemo(
-    () => ({
-      success: (message: string) => showToast(message, 'success'),
-      error: (message: string) => showToast(message, 'error'),
-    }),
-    [showToast],
-  )
+  useEffect(() => {
+    playTrackRef.current = playTrack
+  }, [playTrack])
 
   useEffect(() => {
     return () => {
@@ -987,11 +1022,6 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (toastTimeoutRef.current !== null) {
-        window.clearTimeout(toastTimeoutRef.current)
-        toastTimeoutRef.current = null
-      }
-
       if (explorePulseTimeoutRef.current !== null) {
         window.clearTimeout(explorePulseTimeoutRef.current)
         explorePulseTimeoutRef.current = null
@@ -1056,16 +1086,33 @@ function App() {
   }, [])
 
   const handlePlayPause = useCallback(() => {
-    const audio = audioRef.current
+    let audio = audioRef.current
+
     if (!audio) {
+      const track = currentTrackRef.current
+      if (!track || !track.audioUrl) {
+        return
+      }
+      audio = new Audio(track.audioUrl)
+      audio.crossOrigin = 'anonymous'
+      audio.volume = volume
+      audioRef.current = audio
+      cleanupRef.current?.()
+      attachAudio(audio, handleAutoAdvance)
+    } else if (!audio.src && currentTrackRef.current?.audioUrl) {
+      audio.src = currentTrackRef.current.audioUrl
+    }
+
+    if (!audio.src) {
       return
     }
+
     if (audio.paused) {
       audio.play().catch(() => undefined)
     } else {
       audio.pause()
     }
-  }, [])
+  }, [attachAudio, handleAutoAdvance, volume])
 
   const handleSeek = (value: number) => {
     const audio = audioRef.current
@@ -1100,7 +1147,7 @@ function App() {
           shuffleHistoryRef.current.push(getTrackKey(current))
         }
       }
-      await playTrack(track, index, true, false)
+      await playTrack(track, index, true)
     },
     [playTrack],
   )
@@ -1270,9 +1317,15 @@ function App() {
         await playTrack(validTracks[0], 0)
       }
 
-      toast.success('已更新热门前 50 首歌曲 🎧')
+      toast('已更新热门前 50 首歌曲 🎧', {
+        className: 'black-toast',
+        duration: 2500,
+      })
     } catch (err) {
-      toast.error('获取热门歌曲失败，请稍后再试')
+      toast('获取热门歌曲失败，请稍后再试', {
+        className: 'black-toast',
+        duration: 2500,
+      })
       console.error(err)
     } finally {
       setIsExploring(false)
@@ -1281,7 +1334,6 @@ function App() {
     buildTrackDetails,
     isExploring,
     playTrack,
-    toast,
   ])
 
   const handlePrevious = useCallback(() => {
@@ -1753,17 +1805,7 @@ function App() {
           <span className="sr-only">显示播放列表</span>
         </button>
       </div>
-      <div className="toast-container" aria-live="assertive" aria-atomic="true">
-        {toastState && (
-          <div
-            key={toastState.key}
-            className={`toast-message toast-${toastState.type} is-visible`}
-            role="status"
-          >
-            {toastState.message}
-          </div>
-        )}
-      </div>
+      <Toaster position="top-center" toastOptions={{ className: 'black-toast', duration: 2500 }} />
     </div>
   )
 }
