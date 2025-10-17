@@ -545,7 +545,6 @@ function App() {
         setSearchResults([])
         setIsSearching(false)
         setHasMoreResults(false)
-        setFailedCoverMap({})
         return
       }
 
@@ -559,7 +558,6 @@ function App() {
         const parsedResults = Array.isArray(results) ? results : []
         setSearchResults(parsedResults)
         setHasMoreResults(parsedResults.length >= searchLimit)
-        setFailedCoverMap({})
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error(err)
