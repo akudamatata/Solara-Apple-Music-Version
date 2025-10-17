@@ -38,6 +38,22 @@ interface TrackDetails {
   lyrics: LyricLine[]
 }
 
+type AudioQuality = 'standard' | 'high' | 'very_high' | 'lossless'
+
+const AUDIO_QUALITY_OPTIONS: Array<{ value: AudioQuality; label: string }> = [
+  { value: 'standard', label: '标准音质' },
+  { value: 'high', label: '高频音质' },
+  { value: 'very_high', label: '极高音质' },
+  { value: 'lossless', label: '无损音质' },
+]
+
+const QUALITY_TO_BR: Record<AudioQuality, number> = {
+  standard: 128,
+  high: 192,
+  very_high: 320,
+  lossless: 999,
+}
+
 const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
   const response = await fetch(url, { signal })
   if (!response.ok) {
@@ -225,6 +241,8 @@ function App() {
   const [currentTrack, setCurrentTrack] = useState<TrackDetails | null>(null)
   const [isLoadingTrack, setIsLoadingTrack] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [audioQuality, setAudioQuality] = useState<AudioQuality>('very_high')
+  const qualitySelectId = useId()
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
@@ -481,9 +499,10 @@ function App() {
   )
 
   const buildTrackDetails = useCallback(async (track: SearchResult): Promise<TrackDetails> => {
+    const bitrate = QUALITY_TO_BR[audioQuality]
     const [urlInfo, lyricInfo, picInfo] = await Promise.all([
       fetchJson<{ url: string }>(
-        `${API_BASE}?types=url&source=${track.source || DEFAULT_SOURCE}&id=${track.id}&br=320`,
+        `${API_BASE}?types=url&source=${track.source || DEFAULT_SOURCE}&id=${track.id}&br=${bitrate}`,
       ),
       fetchJson<{ lyric?: string | null; tlyric?: string | null }>(
         `${API_BASE}?types=lyric&source=${track.source || DEFAULT_SOURCE}&id=${track.lyric_id || track.id}`,
@@ -507,7 +526,7 @@ function App() {
       audioUrl: urlInfo.url,
       lyrics,
     }
-  }, [])
+  }, [audioQuality])
 
   const activateTrack = useCallback(
     async (details: TrackDetails, shouldAutoplay: boolean, onEnded: () => void) => {
@@ -975,6 +994,25 @@ function App() {
                 <span className="time time-start">{formatTime(progressValue)}</span>
                 <span className="time time-end">{formatTime(progressMax)}</span>
               </div>
+            </div>
+
+            <div className="audio-quality-control" role="group" aria-label="音质选择">
+              <label className="audio-quality-label" htmlFor={qualitySelectId}>
+                音质
+              </label>
+              <select
+                id={qualitySelectId}
+                className="audio-quality-select"
+                value={audioQuality}
+                onChange={(event) => setAudioQuality(event.target.value as AudioQuality)}
+                aria-label="选择音质"
+              >
+                {AUDIO_QUALITY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="player-controls control-row" role="group" aria-label="播放控制">
