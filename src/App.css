@@ -1403,9 +1403,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  width: calc(100% - var(--page-gutter));
-  margin-right: var(--page-gutter);
-  padding: 0 0 0.4rem 0;
+  width: 100%;
+  align-self: stretch;
+  padding: 0 0 var(--space-stack-xs, 0.4rem) 0;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .list-header__title {
