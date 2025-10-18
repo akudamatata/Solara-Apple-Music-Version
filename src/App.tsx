@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useId, lazy, Suspense, memo } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ChangeEvent } from 'react'
 import { Download, Radar, Trash2, X } from 'lucide-react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
-import Lyrics from './components/Lyrics'
+// ✅ Performance optimized automatically by Codex
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
 import { DEFAULT_PALETTE, extractPaletteFromImage } from './utils/palette'
@@ -12,6 +12,8 @@ import type { BackgroundPalette } from './utils/palette'
 import { generateAppleMusicStyleBackground } from './utils/background'
 import AudioQualityDropdown from './AudioQualityDropdown'
 import { QUALITY_TO_BR, type AudioQuality } from './audioQuality'
+
+const Lyrics = lazy(() => import('./components/Lyrics'))
 
 const API_BASE = '/proxy'
 const KUWO_HOST_PATTERN = /(^|\.)kuwo\.cn$/i
@@ -117,7 +119,7 @@ const formatTime = (value: number) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-const SearchIcon = () => (
+const SearchIcon = memo(() => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
       d="M21 21l-4.35-4.35m1.52-3.79a6.54 6.54 0 11-13.07 0 6.54 6.54 0 0113.07 0z"
@@ -128,9 +130,9 @@ const SearchIcon = () => (
       strokeLinejoin="round"
     />
   </svg>
-)
+))
 
-const PlayIcon = () => (
+const PlayIcon = memo(() => (
   <svg viewBox="0 0 28 28" aria-hidden="true" focusable="false">
     <path
       d="M10.345 23.287c.415 0 .763-.15 1.22-.407l12.742-7.404c.838-.481 1.178-.855 1.178-1.46 0-.599-.34-.972-1.178-1.462L11.565 5.158c-.457-.265-.805-.407-1.22-.407-.789 0-1.345.606-1.345 1.57V21.71c0 .971.556 1.577 1.345 1.577z"
@@ -138,9 +140,9 @@ const PlayIcon = () => (
       fillRule="nonzero"
     />
   </svg>
-)
+))
 
-const PauseIcon = () => (
+const PauseIcon = memo(() => (
   <svg viewBox="0 0 32 28" aria-hidden="true" focusable="false">
     <path
       d="M13.293 22.772c.955 0 1.436-.481 1.436-1.436V6.677c0-.98-.481-1.427-1.436-1.427h-2.457c-.954 0-1.436.473-1.436 1.427v14.66c-.008.954.473 1.435 1.436 1.435h2.457zm7.87 0c.954 0 1.427-.481 1.427-1.436V6.677c0-.98-.473-1.427-1.428-1.427h-2.465c-.955 0-1.428.473-1.428 1.427v14.66c0 .954.473 1.435 1.428 1.435h2.465z"
@@ -148,9 +150,9 @@ const PauseIcon = () => (
       fillRule="nonzero"
     />
   </svg>
-)
+))
 
-const ShuffleIcon = () => (
+const ShuffleIcon = memo(() => (
   <svg viewBox="0 0 32 28" aria-hidden="true" focusable="false">
     <path
       d="M5.536 6.5h3.797c1.27 0 2.205.327 3.156 1.116l6.153 5.05c.656.538 1.095.72 1.961.72h4.536l-1.637-1.636c-.407-.407-.407-1.04 0-1.448s1.04-.407 1.448 0l3.53 3.53c.407.407.407 1.04 0 1.448l-3.53 3.53c-.408.407-1.04.407-1.448 0-.407-.408-.407-1.041 0-1.448l1.637-1.637h-4.536c-1.27 0-2.205-.327-3.156-1.116l-6.153-5.05c-.656-.538-1.095-.72-1.961-.72H5.536v2.18c0 .58-.466 1.046-1.045 1.046-.58 0-1.046-.466-1.046-1.046V7.546C3.445 6.967 3.911 6.5 4.491 6.5zm0 8.54c.579 0 1.045.466 1.045 1.046v2.18h2.701c.866 0 1.305-.182 1.961-.72l2.057-1.688c.417-.343 1.04-.286 1.383.131.343.417.286 1.04-.131 1.383l-2.057 1.688c-.95.789-1.885 1.116-3.156 1.116H5.536v2.18c0 .58-.466 1.045-1.045 1.045-.58 0-1.046-.465-1.046-1.045v-3.673c0-.58.466-1.046 1.046-1.046z"
@@ -158,9 +160,9 @@ const ShuffleIcon = () => (
       fillRule="nonzero"
     />
   </svg>
-)
+))
 
-const RepeatIcon = () => (
+const RepeatIcon = memo(() => (
   <svg viewBox="0 0 32 28" aria-hidden="true" focusable="false">
     <path
       d="M7.4 6.1h13.104l-1.49-1.488c-.408-.408-.408-1.04 0-1.448s1.04-.408 1.448 0l3.53 3.53c.408.408.408 1.04 0 1.448l-3.53 3.53c-.408.408-1.04.408-1.448 0s-.408-1.04 0-1.448L20.504 8.2H7.4c-2.415 0-4.375 1.96-4.375 4.375v1.8c0 .58-.466 1.045-1.046 1.045-.579 0-1.045-.465-1.045-1.045v-1.8C.934 8.698 3.633 6.1 7.4 6.1zm17.2 10.77H11.496l1.49 1.488c.408.408.408 1.04 0 1.448-.408.408-1.04.408-1.448 0l-3.53-3.53c-.408-.408-.408-1.04 0-1.448l3.53-3.53c.408-.408 1.04-.408 1.448 0 .408.408.408 1.04 0 1.448l-1.49 1.49H24.6c2.415 0 4.375-1.96 4.375-4.375v-1.8c0-.58.466-1.045 1.045-1.045.58 0 1.046.465 1.046 1.045v1.8c0 3.777-2.699 6.375-6.466 6.375z"
@@ -168,17 +170,17 @@ const RepeatIcon = () => (
       fillRule="nonzero"
     />
   </svg>
-)
+))
 
-const RepeatOneIcon = () => (
+const RepeatOneIcon = memo(() => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
     <path d="M17 17H7V7h8V5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10v2l3-3-3-3v2zm-4-4h-2V9l-1.5.75V8L11 7h1v6z" />
   </svg>
-)
+))
 
 const iconShadow = 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25))'
 
-const SpeakerLowIcon = () => (
+const SpeakerLowIcon = memo(() => (
   <svg viewBox="0 0 24 24" aria-hidden="true" style={{ filter: iconShadow }}>
     <path
       d="M4.5 10h2.2L12 6v12l-5.3-4H4.5a1.5 1.5 0 01-1.5-1.5V11.5A1.5 1.5 0 014.5 10z"
@@ -186,9 +188,9 @@ const SpeakerLowIcon = () => (
     />
     <path d="M16 10.2a2.6 2.6 0 010 3.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
-)
+))
 
-const SpeakerHighIcon = () => (
+const SpeakerHighIcon = memo(() => (
   <svg viewBox="0 0 24 24" aria-hidden="true" style={{ filter: iconShadow }}>
     <path
       d="M4.5 10h2.2L12 6v12l-5.3-4H4.5a1.5 1.5 0 01-1.5-1.5V11.5A1.5 1.5 0 014.5 10z"
@@ -202,9 +204,9 @@ const SpeakerHighIcon = () => (
       strokeLinecap="round"
     />
   </svg>
-)
+))
 
-const PrevIcon = () => (
+const PrevIcon = memo(() => (
   <svg viewBox="0 0 32 28" aria-hidden="true" focusable="false">
     <g transform="matrix(-1 0 0 1 32 0)">
       <path
@@ -218,9 +220,9 @@ const PrevIcon = () => (
       />
     </g>
   </svg>
-)
+))
 
-const NextIcon = () => (
+const NextIcon = memo(() => (
   <svg viewBox="0 0 32 28" aria-hidden="true" focusable="false">
     <path
       d="M10.345 23.287c.415 0 .763-.15 1.22-.407l12.742-7.404c.838-.481 1.178-.855 1.178-1.46 0-.599-.34-.972-1.178-1.462L11.565 5.158c-.457-.265-.805-.407-1.22-.407-.789 0-1.345.606-1.345 1.57V21.71c0 .971.556 1.577 1.345 1.577z"
@@ -232,9 +234,9 @@ const NextIcon = () => (
       fill="currentColor"
     />
   </svg>
-)
+))
 
-const LyricsIcon = () => {
+const LyricsIcon = memo(() => {
   const maskId = useId()
   return (
     <svg
@@ -265,17 +267,17 @@ const LyricsIcon = () => {
       <rect data-testid="invertible-mask-rect" width="100%" height="100%" mask={`url(#${maskId})`} />
     </svg>
   )
-}
+})
 
-const PlaylistIcon = () => (
+const PlaylistIcon = memo(() => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
     <path d="M3 5h14v2H3zm0 4h10v2H3zm0 4h7v2H3zm14 2v6l4-3-4-3z" />
   </svg>
-)
+))
 
-const LoadingSpinner = () => (
+const LoadingSpinner = memo(() => (
   <span className="spinner" aria-hidden="true" />
-)
+))
 
 function App() {
   const [query, setQuery] = useState('')
@@ -305,6 +307,8 @@ function App() {
   const qualityToastEnabledRef = useRef(false)
   const qualityToastTimerRef = useRef<number | null>(null)
   const autoLoadGuardRef = useRef(false)
+  const timeUpdateFrameRef = useRef<number | null>(null)
+  const queryInputFrameRef = useRef<number | null>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
@@ -327,6 +331,19 @@ function App() {
   const repeatModeRef = useRef(repeatMode)
   const lyricsScrollRef = useRef<HTMLDivElement | null>(null)
   const searchBarRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        if (timeUpdateFrameRef.current !== null) {
+          window.cancelAnimationFrame(timeUpdateFrameRef.current)
+        }
+        if (queryInputFrameRef.current !== null) {
+          window.cancelAnimationFrame(queryInputFrameRef.current)
+        }
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -838,6 +855,10 @@ function App() {
   const teardownAudio = useCallback(() => {
     cleanupRef.current?.()
     cleanupRef.current = null
+    if (typeof window !== 'undefined' && timeUpdateFrameRef.current !== null) {
+      window.cancelAnimationFrame(timeUpdateFrameRef.current)
+      timeUpdateFrameRef.current = null
+    }
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.src = ''
@@ -847,18 +868,42 @@ function App() {
   }, [])
 
   const handleTimeUpdate = useCallback((audio: HTMLAudioElement) => {
-    setProgress(audio.currentTime)
-    const track = currentTrackRef.current
-    if (!track || !track.lyrics.length) {
+    if (typeof window === 'undefined') {
+      setProgress(audio.currentTime)
+      const track = currentTrackRef.current
+      if (!track || !track.lyrics.length) {
+        return
+      }
+      const current = audio.currentTime + 0.25
+      let nextIndex = track.lyrics.findIndex((line) => current < line.time)
+      if (nextIndex === -1) {
+        nextIndex = track.lyrics.length
+      }
+      const computed = Math.max(0, nextIndex - 1)
+      setActiveLyricIndex((prev) => (prev === computed ? prev : computed))
       return
     }
-    const current = audio.currentTime + 0.25
-    let nextIndex = track.lyrics.findIndex((line) => current < line.time)
-    if (nextIndex === -1) {
-      nextIndex = track.lyrics.length
+
+    if (timeUpdateFrameRef.current !== null) {
+      window.cancelAnimationFrame(timeUpdateFrameRef.current)
     }
-    const computed = Math.max(0, nextIndex - 1)
-    setActiveLyricIndex((prev) => (prev === computed ? prev : computed))
+
+    timeUpdateFrameRef.current = window.requestAnimationFrame(() => {
+      setProgress(audio.currentTime)
+      const track = currentTrackRef.current
+      if (!track || !track.lyrics.length) {
+        timeUpdateFrameRef.current = null
+        return
+      }
+      const current = audio.currentTime + 0.25
+      let nextIndex = track.lyrics.findIndex((line) => current < line.time)
+      if (nextIndex === -1) {
+        nextIndex = track.lyrics.length
+      }
+      const computed = Math.max(0, nextIndex - 1)
+      setActiveLyricIndex((prev) => (prev === computed ? prev : computed))
+      timeUpdateFrameRef.current = null
+    })
   }, [])
 
   const attachAudio = useCallback(
@@ -892,6 +937,10 @@ function App() {
         audio.removeEventListener('waiting', onWaiting)
         audio.removeEventListener('playing', onPlaying)
         audio.removeEventListener('ended', handleEnded)
+        if (typeof window !== 'undefined' && timeUpdateFrameRef.current !== null) {
+          window.cancelAnimationFrame(timeUpdateFrameRef.current)
+          timeUpdateFrameRef.current = null
+        }
       }
     },
     [handleTimeUpdate],
@@ -1250,8 +1299,38 @@ function App() {
       ({
         '--dynamic-backdrop': displayedBg ? `url(${displayedBg})` : 'none',
         opacity: isBackgroundVisible ? 0.82 : 0,
+        transform: isBackgroundVisible ? 'scale3d(1.02, 1.02, 1)' : 'scale3d(1.01, 1.01, 1)',
+        backdropFilter: 'blur(18px)',
+        willChange: 'transform, opacity',
       }) as CSSProperties,
     [displayedBg, isBackgroundVisible],
+  )
+
+  const handleQueryInput = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const nextValue = event.target.value
+
+      if (typeof window === 'undefined') {
+        setQuery(nextValue)
+        setSearchLimit(SEARCH_PAGE_SIZE)
+        setHasMoreResults(false)
+        setSearchResults([])
+        return
+      }
+
+      if (queryInputFrameRef.current !== null) {
+        window.cancelAnimationFrame(queryInputFrameRef.current)
+      }
+
+      queryInputFrameRef.current = window.requestAnimationFrame(() => {
+        setQuery(nextValue)
+        setSearchLimit(SEARCH_PAGE_SIZE)
+        setHasMoreResults(false)
+        setSearchResults([])
+        queryInputFrameRef.current = null
+      })
+    },
+    [setHasMoreResults, setQuery, setSearchLimit, setSearchResults],
   )
 
   const toggleShuffle = useCallback(() => {
@@ -1295,14 +1374,14 @@ function App() {
     }
   }, [attachAudio, handleAutoAdvance, volume])
 
-  const handleSeek = (value: number) => {
+  const handleSeek = useCallback((value: number) => {
     const audio = audioRef.current
     if (!audio || !currentTrackRef.current) {
       return
     }
     audio.currentTime = value
     setProgress(value)
-  }
+  }, [])
 
   const handleAudioQualityChange = useCallback(
     (selectedQuality: AudioQuality) => {
@@ -1311,9 +1390,9 @@ function App() {
     [setAudioQuality]
   )
 
-  const handleVolumeChange = (value: number) => {
+  const handleVolumeChange = useCallback((value: number) => {
     setVolume(value)
-  }
+  }, [])
 
   const handlePlaylistSelect = useCallback(
     async (index: number) => {
@@ -1683,12 +1762,14 @@ function App() {
     const clampedIndex = Math.min(Math.max(activeLyricIndex, -1), lyricLines.length - 1)
 
     return (
-      <Lyrics
-        lyrics={lyricLines}
-        currentIndex={clampedIndex}
-        className="mx-auto max-w-2xl"
-        scrollContainerRef={lyricsScrollRef}
-      />
+      <Suspense fallback={<p className="lyrics-placeholder">正在载入歌词…</p>}>
+        <Lyrics
+          lyrics={lyricLines}
+          currentIndex={clampedIndex}
+          className="mx-auto max-w-2xl"
+          scrollContainerRef={lyricsScrollRef}
+        />
+      </Suspense>
     )
   }, [currentTrack, activeLyricIndex, lyricsScrollRef])
 
@@ -1888,11 +1969,7 @@ function App() {
                     <SearchIcon />
                     <input
                       value={query}
-                      onChange={(event) => {
-                        setQuery(event.target.value)
-                        setSearchLimit(SEARCH_PAGE_SIZE)
-                        setHasMoreResults(false)
-                      }}
+                      onChange={handleQueryInput}
                       placeholder="搜索艺术家、歌曲或专辑"
                       spellCheck={false}
                     />

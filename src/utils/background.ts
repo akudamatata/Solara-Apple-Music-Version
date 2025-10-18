@@ -1,3 +1,4 @@
+// ✅ Performance optimized automatically by Codex
 const CANVAS_SIZE = 1440
 const SAMPLE_SIZE = 40
 
@@ -142,10 +143,12 @@ export const generateAppleMusicStyleBackground = async (url: string): Promise<st
   radial.addColorStop(0.74, toColorString(softenedBase, 0.92))
   radial.addColorStop(1, toColorString(deepShadow, 0.98))
 
-  context.filter = 'blur(22px)'
+  context.save()
+  context.setTransform(1.04, 0, 0, 1.04, -CANVAS_SIZE * 0.02, -CANVAS_SIZE * 0.02)
+  context.filter = 'blur(12px)'
   context.fillStyle = radial
-  context.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
-  context.filter = 'none'
+  context.fillRect(0, 0, CANVAS_SIZE * 1.04, CANVAS_SIZE * 1.04)
+  context.restore()
 
   const linear = context.createLinearGradient(0, CANVAS_SIZE * 0.2, CANVAS_SIZE, CANVAS_SIZE * 0.9)
   linear.addColorStop(0, toColorString(lighten(highlight, 0.22), 0.6))

@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -7,6 +8,7 @@ import {
   type MutableRefObject,
   type RefObject,
 } from 'react'
+// ✅ Performance optimized automatically by Codex
 import LyricLine from './LyricLine'
 
 interface LyricItem {
@@ -24,14 +26,96 @@ interface LyricsProps {
 const baseContainerClass =
   'relative flex h-full w-full flex-col items-center overflow-hidden text-center'
 
-const Lyrics = ({ lyrics, currentIndex, className, scrollContainerRef }: LyricsProps) => {
+const LyricsComponent = ({ lyrics, currentIndex, className, scrollContainerRef }: LyricsProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const lineRefs = useRef<(HTMLDivElement | null)[]>([])
   const [hasEnteredBottomZone, setHasEnteredBottomZone] = useState<Record<number, boolean>>({})
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const scrollAnimationRef = useRef<number | null>(null)
+  const scrollFrameRef = useRef<number | null>(null)
+  const scrollSettledTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        if (scrollAnimationRef.current !== null) {
+          window.cancelAnimationFrame(scrollAnimationRef.current)
+        }
+        if (scrollFrameRef.current !== null) {
+          window.cancelAnimationFrame(scrollFrameRef.current)
+        }
+        if (scrollSettledTimeoutRef.current !== null) {
+          window.clearTimeout(scrollSettledTimeoutRef.current)
+        }
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setHasEnteredBottomZone({})
+    setIsUserScrolling(false)
   }, [lyrics])
+
+  const smoothScrollTo = useCallback((container: HTMLDivElement, target: number) => {
+    if (typeof window === 'undefined') {
+      container.scrollTop = target
+      return
+    }
+
+    if (scrollAnimationRef.current !== null) {
+      window.cancelAnimationFrame(scrollAnimationRef.current)
+    }
+
+    const start = container.scrollTop
+    const distance = target - start
+
+    if (Math.abs(distance) < 0.5) {
+      container.scrollTop = target
+      scrollAnimationRef.current = null
+      return
+    }
+
+    const duration = 320
+    const startTime = window.performance?.now?.() ?? Date.now()
+
+    const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3)
+
+    const step = (timestamp: number) => {
+      const elapsed = timestamp - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = easeOutCubic(progress)
+      container.scrollTop = start + distance * eased
+      if (progress < 1) {
+        scrollAnimationRef.current = window.requestAnimationFrame(step)
+      } else {
+        scrollAnimationRef.current = null
+      }
+    }
+
+    scrollAnimationRef.current = window.requestAnimationFrame(step)
+  }, [])
+
+  const handleScroll = useCallback(() => {
+    if (typeof window === 'undefined') {
+      setIsUserScrolling(false)
+      return
+    }
+
+    if (scrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollFrameRef.current)
+    }
+
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      setIsUserScrolling(true)
+      if (scrollSettledTimeoutRef.current !== null) {
+        window.clearTimeout(scrollSettledTimeoutRef.current)
+      }
+      scrollSettledTimeoutRef.current = window.setTimeout(() => {
+        setIsUserScrolling(false)
+        scrollSettledTimeoutRef.current = null
+      }, 180)
+    })
+  }, [])
 
   useEffect(() => {
     setHasEnteredBottomZone((prev) => {
@@ -88,7 +172,23 @@ const Lyrics = ({ lyrics, currentIndex, className, scrollContainerRef }: LyricsP
     }
   }, [lyrics, scrollContainerRef])
 
+  useEffect(() => {
+    const container = scrollContainerRef?.current ?? containerRef.current
+    if (!container) {
+      return
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll, scrollContainerRef])
+
   const scrollToActiveLine = useCallback(() => {
+    if (isUserScrolling) {
+      return
+    }
     const container = scrollContainerRef?.current ?? containerRef.current
     if (!container) return
 
@@ -102,8 +202,8 @@ const Lyrics = ({ lyrics, currentIndex, className, scrollContainerRef }: LyricsP
     const target =
       activeOffset + container.scrollTop - containerHeight / 2 + activeLine.offsetHeight / 2
 
-    container.scrollTo({ top: Math.max(target, 0), behavior: 'smooth' })
-  }, [currentIndex, scrollContainerRef])
+    smoothScrollTo(container, Math.max(target, 0))
+  }, [currentIndex, isUserScrolling, scrollContainerRef, smoothScrollTo])
 
   useEffect(() => {
     scrollToActiveLine()
@@ -153,4 +253,4 @@ const Lyrics = ({ lyrics, currentIndex, className, scrollContainerRef }: LyricsP
   )
 }
 
-export default Lyrics
+export default memo(LyricsComponent)
