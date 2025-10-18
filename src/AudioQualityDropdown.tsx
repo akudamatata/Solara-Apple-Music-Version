@@ -106,7 +106,6 @@ export default function AudioQualityDropdown({
         title={triggerTitle}
       >
         {triggerContent ?? triggerLabel}
-        {variant === 'default' && !triggerContent && <span className="source-dd__caret" aria-hidden="true" />}
       </button>
       {open && (
         <div
