@@ -594,6 +594,12 @@ function App() {
   const repeatModeRef = useRef(repeatMode)
   const lyricsScrollRef = useRef<HTMLDivElement | null>(null)
   const searchBarRef = useRef<HTMLDivElement | null>(null)
+  const [isLowOverhead, setIsLowOverhead] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false
+    }
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  })
 
   useEffect(() => {
     return () => {
@@ -605,6 +611,34 @@ function App() {
           window.cancelAnimationFrame(queryInputFrameRef.current)
         }
       }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+    const updateLowOverhead = (event: MediaQueryList | MediaQueryListEvent) => {
+      setIsLowOverhead(event.matches)
+    }
+
+    updateLowOverhead(mediaQuery)
+
+    const handleChange = (event: MediaQueryListEvent) => updateLowOverhead(event)
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange)
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange)
+      }
+    }
+
+    mediaQuery.addListener(handleChange)
+    return () => {
+      mediaQuery.removeListener(handleChange)
     }
   }, [])
 
@@ -1558,15 +1592,24 @@ function App() {
   }, [generatedBg])
 
   const generatedBackgroundStyle = useMemo<CSSProperties>(
-    () =>
-      ({
+    () => {
+      if (isLowOverhead) {
+        return {
+          '--dynamic-backdrop': 'none',
+          opacity: 1,
+          transform: 'none',
+        } as CSSProperties
+      }
+
+      return {
         '--dynamic-backdrop': displayedBg ? `url(${displayedBg})` : 'none',
         opacity: isBackgroundVisible ? 0.82 : 0,
         transform: isBackgroundVisible ? 'scale3d(1.02, 1.02, 1)' : 'scale3d(1.01, 1.01, 1)',
         backdropFilter: 'blur(18px)',
         willChange: 'transform, opacity',
-      }) as CSSProperties,
-    [displayedBg, isBackgroundVisible],
+      } as CSSProperties
+    },
+    [displayedBg, isBackgroundVisible, isLowOverhead],
   )
 
   const handleQueryInput = useCallback(
@@ -2097,7 +2140,11 @@ function App() {
     repeatMode === 'none' ? '开启循环播放' : repeatMode === 'all' ? '切换为单曲循环' : '关闭循环播放'
 
   return (
-    <div className="app" style={backgroundStyle}>
+    <div
+      className="app"
+      style={backgroundStyle}
+      data-low-overhead={isLowOverhead ? 'true' : undefined}
+    >
       <div className="app-backdrop" style={generatedBackgroundStyle} />
       <div className="app-overlay" />
       <h1 className="header-title">SOLARA MUSIC</h1>
