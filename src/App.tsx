@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId, lazy, Suspense, memo } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
-import type { CSSProperties, ChangeEvent } from 'react'
+import type { CSSProperties, ChangeEvent, ReactElement } from 'react'
 import { Download, Radar, Trash2, X } from 'lucide-react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
@@ -21,6 +21,20 @@ const DEFAULT_SOURCE: SourceValue = 'netease'
 const SEARCH_PAGE_SIZE = 24
 const SUPPORTED_AUDIO_EXTENSIONS = /\.(mp3|flac|wav|m4a|ape|aac)$/i
 const INVALID_AUDIO_SOURCE_ERROR = 'INVALID_AUDIO_SOURCE'
+const TRACK_ITEM_HEIGHT = 64
+const PLAYLIST_VERTICAL_GAP_REM = 0.6
+const PLAYLIST_OVERSCAN = 6
+
+const getPlaylistGapPx = () => {
+  if (typeof window === 'undefined') {
+    return 10
+  }
+  const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize || '16')
+  if (!Number.isFinite(rootFontSize)) {
+    return 10
+  }
+  return rootFontSize * PLAYLIST_VERTICAL_GAP_REM
+}
 
 const isSupportedAudioSource = (url: string | null | undefined) => {
   if (!url) {
@@ -198,82 +212,194 @@ const PlaylistView = memo(
     onRemove,
     onClear,
   }: PlaylistViewProps) => {
-    const playlistContent = useMemo(() => {
-      return playlist.map((track, index) => {
+    const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null)
+    const [scrollTop, setScrollTop] = useState(0)
+    const [viewportHeight, setViewportHeight] = useState(0)
+    const [rowGap, setRowGap] = useState(() => getPlaylistGapPx())
+
+    const handleContainerRef = useCallback((node: HTMLDivElement | null) => {
+      setContainerEl(node)
+    }, [])
+
+    useEffect(() => {
+      if (typeof window === 'undefined') {
+        return
+      }
+      const updateGap = () => {
+        setRowGap(getPlaylistGapPx())
+      }
+      updateGap()
+      window.addEventListener('resize', updateGap)
+      return () => {
+        window.removeEventListener('resize', updateGap)
+      }
+    }, [])
+
+    useEffect(() => {
+      if (!containerEl) {
+        return
+      }
+      const handleScroll = () => {
+        setScrollTop(containerEl.scrollTop)
+      }
+      handleScroll()
+      containerEl.addEventListener('scroll', handleScroll, { passive: true })
+      return () => {
+        containerEl.removeEventListener('scroll', handleScroll)
+      }
+    }, [containerEl])
+
+    useEffect(() => {
+      if (!containerEl) {
+        return
+      }
+      const updateViewport = () => {
+        setViewportHeight(containerEl.clientHeight)
+      }
+      updateViewport()
+      if (typeof ResizeObserver === 'undefined') {
+        return
+      }
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.target === containerEl) {
+            setViewportHeight(entry.contentRect.height)
+          }
+        }
+      })
+      observer.observe(containerEl)
+      return () => {
+        observer.disconnect()
+      }
+    }, [containerEl])
+
+    const rowStride = TRACK_ITEM_HEIGHT + rowGap
+    const activeOptionId = currentTrackId ? `playlist-option-${currentTrackId}` : undefined
+
+    const { startIndex, endIndex } = useMemo(() => {
+      if (!playlist.length) {
+        return { startIndex: 0, endIndex: -1 }
+      }
+      const stride = rowStride > 0 ? rowStride : TRACK_ITEM_HEIGHT
+      const safeScrollTop = Math.max(0, scrollTop)
+      const firstVisible = Math.floor(safeScrollTop / stride)
+      const approxVisible = Math.max(1, Math.ceil((viewportHeight || TRACK_ITEM_HEIGHT) / stride))
+      const start = Math.max(0, firstVisible - PLAYLIST_OVERSCAN)
+      const end = Math.min(playlist.length - 1, firstVisible + approxVisible + PLAYLIST_OVERSCAN)
+      return { startIndex: start, endIndex: end }
+    }, [playlist.length, rowStride, scrollTop, viewportHeight])
+
+    const totalHeight = useMemo(() => {
+      if (!playlist.length) {
+        return 0
+      }
+      const gapContribution = Math.max(0, playlist.length - 1) * Math.max(0, rowGap)
+      return playlist.length * TRACK_ITEM_HEIGHT + gapContribution
+    }, [playlist.length, rowGap])
+
+    const visibleTracks = useMemo(() => {
+      if (!playlist.length || endIndex < startIndex) {
+        return []
+      }
+      const stride = rowStride > 0 ? rowStride : TRACK_ITEM_HEIGHT
+      const nodes: ReactElement[] = []
+      for (let index = startIndex; index <= endIndex; index += 1) {
+        const track = playlist[index]
+        if (!track) {
+          continue
+        }
         const trackKey = getTrackKey(track)
         const isActive = trackKey === currentTrackId
-        return (
+        const optionId = `playlist-option-${trackKey}`
+        nodes.push(
           <div
             key={trackKey}
-            role="option"
-            aria-selected={isActive}
-            className={`track-item${isActive ? ' active' : ''}`}
-            onClick={() => onSelect(index)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                onSelect(index)
-              }
-            }}
-            tabIndex={0}
-            title={`${track.title} · ${track.artists} · ${track.album}`}
+            className="virtualized-track-viewport__item"
+            style={{ top: `${index * stride}px`, height: TRACK_ITEM_HEIGHT }}
           >
-            <div className="track-thumb" aria-hidden="true">
-              {track.artworkUrl ? (
-                <img src={track.artworkUrl} alt="" loading="lazy" />
-              ) : (
-                <span className="track-letter">{track.title.charAt(0)}</span>
-              )}
-              {isActive && (
-                <span className="equalizer" aria-hidden="true">
-                  <span />
-                </span>
-              )}
-            </div>
-            <div className="track-meta">
-              <span className="track-title track__title">{track.title}</span>
-              <span className="track-artist">{track.artists}</span>
-            </div>
-            <div className="song-actions">
-              <div
-                className="download-action"
-                onClick={(event) => event.stopPropagation()}
-                onMouseDown={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-                onKeyUp={(event) => event.stopPropagation()}
-              >
-                <AudioQualityDropdown
-                  value={downloadQuality}
-                  onChange={(quality) => {
-                    void onDownload(track, quality)
-                  }}
-                  ariaLabel={`选择 ${track.title} 的下载音质`}
-                  triggerTitle="下载"
-                  triggerContent={<Download aria-hidden="true" size={18} strokeWidth={1.9} />}
-                  variant="minimal"
-                  triggerClassName="action-btn"
-                />
+            <div
+              id={optionId}
+              role="option"
+              aria-selected={isActive}
+              className={`track-item${isActive ? ' active' : ''}`}
+              onClick={() => onSelect(index)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onSelect(index)
+                }
+              }}
+              tabIndex={0}
+              title={`${track.title} · ${track.artists} · ${track.album}`}
+            >
+              <div className="track-thumb" aria-hidden="true">
+                {track.artworkUrl ? (
+                  <img src={track.artworkUrl} alt="" loading="lazy" />
+                ) : (
+                  <span className="track-letter">{track.title.charAt(0)}</span>
+                )}
+                {isActive && (
+                  <span className="equalizer" aria-hidden="true">
+                    <span />
+                  </span>
+                )}
               </div>
-              <button
-                type="button"
-                className="action-btn delete-action"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onRemove(trackKey)
-                }}
-                aria-label={`从播放列表移除 ${track.title}`}
-                title="删除"
-              >
-                <X aria-hidden="true" size={18} strokeWidth={1.9} />
-              </button>
+              <div className="track-meta">
+                <span className="track-title track__title">{track.title}</span>
+                <span className="track-artist">{track.artists}</span>
+              </div>
+              <div className="song-actions">
+                <div
+                  className="download-action"
+                  onClick={(event) => event.stopPropagation()}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                  onKeyUp={(event) => event.stopPropagation()}
+                >
+                  <AudioQualityDropdown
+                    value={downloadQuality}
+                    onChange={(quality) => {
+                      void onDownload(track, quality)
+                    }}
+                    ariaLabel={`选择 ${track.title} 的下载音质`}
+                    triggerTitle="下载"
+                    triggerContent={<Download aria-hidden="true" size={18} strokeWidth={1.9} />}
+                    variant="minimal"
+                    triggerClassName="action-btn"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="action-btn delete-action"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onRemove(trackKey)
+                  }}
+                  aria-label={`从播放列表移除 ${track.title}`}
+                  title="删除"
+                >
+                  <X aria-hidden="true" size={18} strokeWidth={1.9} />
+                </button>
+              </div>
             </div>
-          </div>
+          </div>,
         )
-      })
-    }, [playlist, currentTrackId, downloadQuality, onSelect, onDownload, onRemove])
+      }
+      return nodes
+    }, [
+      playlist,
+      endIndex,
+      startIndex,
+      rowStride,
+      currentTrackId,
+      downloadQuality,
+      onSelect,
+      onDownload,
+      onRemove,
+    ])
 
     return (
-      <div className="playlist-view">
+      <div className="playlist-view" ref={handleContainerRef} role="presentation">
         <div className="list-header">
           <span className="list-header__title">播放列表（共 {playlist.length} 首）</span>
           <div className="list-header__actions">
@@ -289,7 +415,18 @@ const PlaylistView = memo(
             </button>
           </div>
         </div>
-        {playlistContent}
+        {playlist.length > 0 && (
+          <div
+            className="virtualized-track-viewport"
+            role="listbox"
+            aria-label="播放列表"
+            aria-activedescendant={activeOptionId}
+          >
+            <div className="virtualized-track-viewport__inner" style={{ height: totalHeight }}>
+              {visibleTracks}
+            </div>
+          </div>
+        )}
         {!playlist.length && <div className="empty-state">播放列表为空，快去搜索一首喜欢的歌曲吧</div>}
       </div>
     )
