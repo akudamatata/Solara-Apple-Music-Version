@@ -178,6 +178,132 @@ const RepeatOneIcon = memo(() => (
   </svg>
 ))
 
+interface PlaylistViewProps {
+  playlist: PlaylistEntry[]
+  currentTrackId: string | null
+  downloadQuality: AudioQuality
+  onSelect: (index: number) => void
+  onDownload: (track: PlaylistEntry, quality: AudioQuality) => void
+  onRemove: (trackKey: string) => void
+  onClear: () => void
+}
+
+const PlaylistView = memo(
+  ({
+    playlist,
+    currentTrackId,
+    downloadQuality,
+    onSelect,
+    onDownload,
+    onRemove,
+    onClear,
+  }: PlaylistViewProps) => {
+    const playlistContent = useMemo(() => {
+      return playlist.map((track, index) => {
+        const trackKey = getTrackKey(track)
+        const isActive = trackKey === currentTrackId
+        return (
+          <div
+            key={trackKey}
+            role="option"
+            aria-selected={isActive}
+            className={`track-item${isActive ? ' active' : ''}`}
+            onClick={() => onSelect(index)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onSelect(index)
+              }
+            }}
+            tabIndex={0}
+            title={`${track.title} · ${track.artists} · ${track.album}`}
+          >
+            <div className="track-thumb" aria-hidden="true">
+              {track.artworkUrl ? (
+                <img src={track.artworkUrl} alt="" loading="lazy" />
+              ) : (
+                <span className="track-letter">{track.title.charAt(0)}</span>
+              )}
+              {isActive && (
+                <span className="equalizer" aria-hidden="true">
+                  <span />
+                </span>
+              )}
+            </div>
+            <div className="track-meta">
+              <span className="track-title track__title">{track.title}</span>
+              <span className="track-artist">{track.artists}</span>
+            </div>
+            <div className="song-actions">
+              <div
+                className="download-action"
+                onClick={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+                onKeyUp={(event) => event.stopPropagation()}
+              >
+                <AudioQualityDropdown
+                  value={downloadQuality}
+                  onChange={(quality) => {
+                    void onDownload(track, quality)
+                  }}
+                  ariaLabel={`选择 ${track.title} 的下载音质`}
+                  triggerTitle="下载"
+                  triggerContent={<Download aria-hidden="true" size={18} strokeWidth={1.9} />}
+                  variant="minimal"
+                  triggerClassName="action-btn"
+                />
+              </div>
+              <button
+                type="button"
+                className="action-btn delete-action"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onRemove(trackKey)
+                }}
+                aria-label={`从播放列表移除 ${track.title}`}
+                title="删除"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={1.9} />
+              </button>
+            </div>
+          </div>
+        )
+      })
+    }, [playlist, currentTrackId, downloadQuality, onSelect, onDownload, onRemove])
+
+    return (
+      <div className="playlist-view">
+        <div className="list-header">
+          <span className="list-header__title">播放列表（共 {playlist.length} 首）</span>
+          <div className="list-header__actions">
+            <button
+              type="button"
+              className="clear-playlist-btn"
+              onClick={onClear}
+              title="清空播放列表"
+              disabled={!playlist.length}
+            >
+              <Trash2 aria-hidden="true" size={18} strokeWidth={1.8} />
+              <span>清空</span>
+            </button>
+          </div>
+        </div>
+        {playlistContent}
+        {!playlist.length && <div className="empty-state">播放列表为空，快去搜索一首喜欢的歌曲吧</div>}
+      </div>
+    )
+  },
+  (prev, next) =>
+    prev.playlist === next.playlist &&
+    prev.currentTrackId === next.currentTrackId &&
+    prev.downloadQuality === next.downloadQuality &&
+    prev.onSelect === next.onSelect &&
+    prev.onDownload === next.onDownload &&
+    prev.onRemove === next.onRemove &&
+    prev.onClear === next.onClear,
+)
+
 const iconShadow = 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25))'
 
 const SpeakerLowIcon = memo(() => (
@@ -2054,97 +2180,15 @@ function App() {
               aria-labelledby={activePanel === 'playlist' ? 'tab-playlist' : 'tab-lyrics'}
             >
               {activePanel === 'playlist' ? (
-                <div className="playlist-view">
-                  <div className="list-header">
-                    <span className="list-header__title">播放列表（共 {playlist.length} 首）</span>
-                    <div className="list-header__actions">
-                      <button
-                        type="button"
-                        className="clear-playlist-btn"
-                        onClick={handleClearPlaylist}
-                        title="清空播放列表"
-                        disabled={!playlist.length}
-                      >
-                        <Trash2 aria-hidden="true" size={18} strokeWidth={1.8} />
-                        <span>清空</span>
-                      </button>
-                    </div>
-                  </div>
-                  {playlist.map((track, index) => {
-                    const trackKey = getTrackKey(track)
-                    const isActive = trackKey === currentTrackId
-                    return (
-                      <div
-                        key={trackKey}
-                        role="option"
-                        aria-selected={isActive}
-                        className={`track-item${isActive ? ' active' : ''}`}
-                        onClick={() => handlePlaylistSelect(index)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
-                            handlePlaylistSelect(index)
-                          }
-                        }}
-                        tabIndex={0}
-                        title={`${track.title} · ${track.artists} · ${track.album}`}
-                      >
-                        <div className="track-thumb" aria-hidden="true">
-                          {track.artworkUrl ? (
-                            <img src={track.artworkUrl} alt="" loading="lazy" />
-                          ) : (
-                            <span className="track-letter">{track.title.charAt(0)}</span>
-                          )}
-                          {isActive && (
-                            <span className="equalizer" aria-hidden="true">
-                              <span />
-                            </span>
-                          )}
-                        </div>
-                        <div className="track-meta">
-                          <span className="track-title track__title">{track.title}</span>
-                          <span className="track-artist">{track.artists}</span>
-                        </div>
-                        <div className="song-actions">
-                          <div
-                            className="download-action"
-                            onClick={(event) => event.stopPropagation()}
-                            onMouseDown={(event) => event.stopPropagation()}
-                            onKeyDown={(event) => event.stopPropagation()}
-                            onKeyUp={(event) => event.stopPropagation()}
-                          >
-                            <AudioQualityDropdown
-                              value={downloadQuality}
-                              onChange={(quality) => {
-                                void handleDownloadTrack(track, quality)
-                              }}
-                              ariaLabel={`选择 ${track.title} 的下载音质`}
-                              triggerTitle="下载"
-                              triggerContent={<Download aria-hidden="true" size={18} strokeWidth={1.9} />}
-                              variant="minimal"
-                              triggerClassName="action-btn"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            className="action-btn delete-action"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleRemoveTrack(trackKey)
-                            }}
-                            aria-label={`从播放列表移除 ${track.title}`}
-                            title="删除"
-                          >
-                            <X aria-hidden="true" size={18} strokeWidth={1.9} />
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {!playlist.length && (
-                    <div className="empty-state">播放列表为空，快去搜索一首喜欢的歌曲吧</div>
-                  )}
-                </div>
+                <PlaylistView
+                  playlist={playlist}
+                  currentTrackId={currentTrackId}
+                  downloadQuality={downloadQuality}
+                  onSelect={handlePlaylistSelect}
+                  onDownload={handleDownloadTrack}
+                  onRemove={handleRemoveTrack}
+                  onClear={handleClearPlaylist}
+                />
               ) : (
                 <div className="lyrics-panel">
                   <header className="lyrics-header">
