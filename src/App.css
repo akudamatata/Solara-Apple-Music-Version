@@ -1397,6 +1397,28 @@
   box-sizing: border-box;
 }
 
+.virtualized-track-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.virtualized-track-viewport__inner {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+}
+
+.virtualized-track-viewport__item {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  will-change: transform;
+  display: flex;
+  align-items: stretch;
+}
+
 .playlist-view > .list-header {
   display: flex;
   flex-direction: row;
