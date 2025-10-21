@@ -2383,7 +2383,7 @@ function App() {
         </button>
       </div>
       <Toaster
-        position="bottom-right"
+        position="top-right"
         toastOptions={{
           duration: 2800,
           className: '',
