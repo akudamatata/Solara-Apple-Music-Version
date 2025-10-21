@@ -4,6 +4,7 @@ import type { CSSProperties, ChangeEvent, ReactElement } from 'react'
 import { Download, Radar, Trash2, X } from 'lucide-react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
+import { Notification } from './components/Notification'
 // ✅ Performance optimized automatically by Codex
 import { mergeLyrics } from './utils/lyrics'
 import type { LyricLine } from './utils/lyrics'
@@ -98,6 +99,24 @@ const AUDIO_QUALITY_TOAST_LABELS: Record<AudioQuality, string> = {
   high: '高音质',
   very_high: '极高音质',
   lossless: '无损音质',
+}
+
+type NotificationType = 'info' | 'success' | 'error'
+
+const showNotification = (message: string, type: NotificationType = 'info') => {
+  toast.custom(
+    (t) => (
+      <Notification
+        message={message}
+        type={type}
+        onClose={() => toast.dismiss(t.id)}
+      />
+    ),
+    {
+      duration: 2800,
+      position: 'top-right',
+    },
+  )
 }
 
 const fetchJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
@@ -833,7 +852,7 @@ function App() {
       return
     }
     const label = AUDIO_QUALITY_TOAST_LABELS[audioQuality] ?? '标准音质'
-    toast(`音质已切换为 ${label}`, { className: 'black-toast' })
+    showNotification(`音质已切换为 ${label}`, 'success')
   }, [audioQuality])
 
   useEffect(() => {
@@ -1489,7 +1508,7 @@ function App() {
         const error = err as Error
         if (error?.message === INVALID_AUDIO_SOURCE_ERROR) {
           console.warn('Audio source unavailable, skipping track automatically.', error)
-          toast('当前歌曲暂无可用播放链接，已自动跳过', { className: 'black-toast' })
+          showNotification('当前歌曲暂无可用播放链接，已自动跳过', 'error')
           skipAfterInvalidTrack(index)
         } else {
           console.error(err)
@@ -1698,7 +1717,7 @@ function App() {
     window.localStorage.removeItem(STORAGE_KEYS.currentTrack)
     window.localStorage.removeItem(STORAGE_KEYS.currentTrackId)
     window.localStorage.removeItem(STORAGE_KEYS.playProgress)
-    toast('播放列表已清空', { className: 'black-toast' })
+    showNotification('播放列表已清空', 'success')
   }, [teardownAudio])
 
   const handleDownloadTrack = useCallback(
@@ -1712,17 +1731,17 @@ function App() {
         )
         const rawUrl = urlInfo?.url ?? ''
         if (!isSupportedAudioSource(rawUrl)) {
-          toast('未找到有效下载链接', { className: 'black-toast' })
+          showNotification('未找到有效下载链接', 'error')
           return
         }
         const downloadUrl = proxifyAudioUrl(rawUrl)
-        toast(`开始下载：${track.title}`, { className: 'black-toast' })
+        showNotification(`开始下载：${track.title}`, 'info')
         if (typeof window !== 'undefined') {
           window.open(downloadUrl, '_blank', 'noopener,noreferrer')
         }
       } catch (error) {
         console.error('Failed to initiate download', error)
-        toast('未找到有效下载链接', { className: 'black-toast' })
+        showNotification('未找到有效下载链接', 'error')
       }
     },
     [setDownloadQuality],
@@ -1758,7 +1777,7 @@ function App() {
         window.localStorage.removeItem(STORAGE_KEYS.playProgress)
       }
 
-      toast('已从播放列表移除', { className: 'black-toast' })
+      showNotification('已从播放列表移除', 'info')
     },
     [teardownAudio],
   )
@@ -1918,15 +1937,9 @@ function App() {
       playlistRef.current = baseTracks
       setPlaylist(baseTracks)
 
-      toast('已更新热门前 50 首歌曲 🎧', {
-        className: 'black-toast',
-        duration: 2800,
-      })
+      showNotification('已更新热门前 50 首歌曲', 'success')
     } catch (err) {
-      toast('获取热门歌曲失败，请稍后再试', {
-        className: 'apple-toast',
-        duration: 2800,
-      })
+      showNotification('获取热门歌曲失败，请稍后再试', 'error')
       console.error(err)
     } finally {
       setIsExploring(false)
@@ -2369,7 +2382,23 @@ function App() {
           <span className="sr-only">显示播放列表</span>
         </button>
       </div>
-      <Toaster position="top-right" toastOptions={{ className: 'apple-toast', duration: 2800 }} />
+      <Toaster
+        position="top-right"
+        gutter={12}
+        containerStyle={{
+          top: 'calc(env(safe-area-inset-top, 0px) + 24px)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 28px)',
+        }}
+        toastOptions={{
+          duration: 2800,
+          className: '',
+          style: {
+            background: 'transparent',
+            boxShadow: 'none',
+            padding: 0,
+          },
+        }}
+      />
     </div>
   )
 }
