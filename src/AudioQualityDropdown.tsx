@@ -34,6 +34,24 @@ export default function AudioQualityDropdown({
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    const trackItem = btnRef.current?.closest<HTMLElement>('.track-item')
+    const virtualRow = btnRef.current?.closest<HTMLElement>('.virtualized-track-viewport__item')
+
+    if (open) {
+      trackItem?.classList.add('track-item--menu-open')
+      virtualRow?.classList.add('virtualized-track-viewport__item--menu-open')
+    } else {
+      trackItem?.classList.remove('track-item--menu-open')
+      virtualRow?.classList.remove('virtualized-track-viewport__item--menu-open')
+    }
+
+    return () => {
+      trackItem?.classList.remove('track-item--menu-open')
+      virtualRow?.classList.remove('virtualized-track-viewport__item--menu-open')
+    }
+  }, [open])
+
+  useEffect(() => {
     if (!open) {
       return
     }
@@ -84,7 +102,7 @@ export default function AudioQualityDropdown({
 
   const containerClassName = `source-dd audio-quality-dd${
     variant === 'minimal' ? ' audio-quality-dd--minimal' : ''
-  }${className ? ` ${className}` : ''}`
+  }${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`
 
   const triggerClasses = `source-dd__trigger${
     variant === 'minimal' ? ' is-minimal' : ''

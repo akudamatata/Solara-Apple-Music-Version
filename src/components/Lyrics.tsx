@@ -29,11 +29,14 @@ const baseContainerClass =
 const LyricsComponent = ({ lyrics, currentIndex, className, scrollContainerRef }: LyricsProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const lineRefs = useRef<(HTMLDivElement | null)[]>([])
-  const [hasEnteredBottomZone, setHasEnteredBottomZone] = useState<Record<number, boolean>>({})
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const scrollAnimationRef = useRef<number | null>(null)
   const scrollFrameRef = useRef<number | null>(null)
   const scrollSettledTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    setIsUserScrolling(false)
+  }, [lyrics])
 
   useEffect(() => {
     return () => {
@@ -50,11 +53,6 @@ const LyricsComponent = ({ lyrics, currentIndex, className, scrollContainerRef }
       }
     }
   }, [])
-
-  useEffect(() => {
-    setHasEnteredBottomZone({})
-    setIsUserScrolling(false)
-  }, [lyrics])
 
   const smoothScrollTo = useCallback((container: HTMLDivElement, target: number) => {
     if (typeof window === 'undefined') {
@@ -118,61 +116,6 @@ const LyricsComponent = ({ lyrics, currentIndex, className, scrollContainerRef }
   }, [])
 
   useEffect(() => {
-    setHasEnteredBottomZone((prev) => {
-      if (currentIndex < 0) return prev
-      let didChange = false
-      const next = { ...prev }
-      for (let i = 0; i <= currentIndex; i += 1) {
-        if (!next[i]) {
-          next[i] = true
-          didChange = true
-        }
-      }
-      return didChange ? next : prev
-    })
-  }, [currentIndex])
-
-  useEffect(() => {
-    const container = scrollContainerRef?.current ?? containerRef.current
-    if (!container) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        setHasEnteredBottomZone((prev) => {
-          const next = { ...prev }
-          let hasChanges = false
-
-          entries.forEach((entry) => {
-            if (!entry.isIntersecting) return
-            const indexValue = (entry.target as HTMLElement).dataset.index
-            const index = indexValue ? Number.parseInt(indexValue, 10) : NaN
-            if (Number.isNaN(index)) return
-            if (!next[index]) {
-              next[index] = true
-              hasChanges = true
-            }
-          })
-
-          return hasChanges ? next : prev
-        })
-      },
-      {
-        root: container,
-        threshold: 0,
-        rootMargin: '-80% 0px 0px 0px',
-      }
-    )
-
-    lineRefs.current.forEach((node) => {
-      if (node) observer.observe(node)
-    })
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [lyrics, scrollContainerRef])
-
-  useEffect(() => {
     const container = scrollContainerRef?.current ?? containerRef.current
     if (!container) {
       return
@@ -230,7 +173,7 @@ const LyricsComponent = ({ lyrics, currentIndex, className, scrollContainerRef }
         <div className="relative z-0 flex flex-col items-center gap-6 pb-32">
           {lyrics.map((line, index) => {
             const key = `${index}-${line.text}`
-            const entered = hasEnteredBottomZone[index] ?? index <= currentIndex
+            const distanceFromActive = Math.abs(currentIndex - index)
             const isActive = index === currentIndex
 
             return (
@@ -243,7 +186,7 @@ const LyricsComponent = ({ lyrics, currentIndex, className, scrollContainerRef }
                 text={line.text}
                 translation={line.translation}
                 isActive={isActive}
-                hasEnteredBottomZone={entered}
+                distanceFromActive={distanceFromActive}
               />
             )
           })}
