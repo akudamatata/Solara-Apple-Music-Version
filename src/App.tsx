@@ -2384,6 +2384,11 @@ function App() {
       </div>
       <Toaster
         position="top-right"
+        gutter={12}
+        containerStyle={{
+          top: 'calc(env(safe-area-inset-top, 0px) + 24px)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 28px)',
+        }}
         toastOptions={{
           duration: 2800,
           className: '',

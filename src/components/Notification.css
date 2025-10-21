@@ -1,7 +1,7 @@
 .toast {
-  position: fixed;
-  top: clamp(16px, 3vh, 36px);
-  right: clamp(24px, 3vw, 48px);
+  position: relative;
+  top: auto;
+  right: auto;
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(18px) saturate(140%);
   color: #fff;
