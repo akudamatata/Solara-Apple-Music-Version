@@ -162,6 +162,47 @@
   transition: background 1.2s ease;
 }
 
+.app[data-low-overhead] {
+  background-attachment: scroll;
+  background-image: linear-gradient(
+      150deg,
+      rgba(12, 10, 32, 0.92) 0%,
+      var(--bg-color-2, rgba(8, 9, 24, 0.94)) 42%,
+      rgba(2, 3, 12, 0.98) 100%
+    ),
+    linear-gradient(120deg, rgba(24, 20, 44, 0.82) 0%, rgba(12, 8, 28, 0.94) 65%);
+  transition: color 0.4s ease, background 0.6s ease;
+}
+
+.app[data-low-overhead]::after {
+  display: none;
+}
+
+.app[data-low-overhead] .app-backdrop {
+  background-image: linear-gradient(
+      160deg,
+      rgba(18, 16, 40, 0.96) 0%,
+      rgba(10, 8, 26, 0.96) 55%,
+      rgba(4, 4, 12, 0.98) 100%
+    );
+  background-blend-mode: normal;
+  transform: none;
+  opacity: 1;
+  will-change: auto;
+  filter: none;
+}
+
+.app[data-low-overhead] .app-overlay {
+  background: linear-gradient(
+    140deg,
+    rgba(6, 8, 20, 0.82) 0%,
+    rgba(14, 10, 28, 0.74) 68%,
+    rgba(18, 10, 28, 0.68) 100%
+  );
+  backdrop-filter: none;
+  mix-blend-mode: normal;
+}
+
 .app-layout {
   position: relative;
   z-index: 3;
