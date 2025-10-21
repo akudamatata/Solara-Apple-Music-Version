@@ -1,6 +1,6 @@
 .toast {
   position: fixed;
-  bottom: clamp(16px, 2vh, 28px);
+  top: clamp(16px, 3vh, 36px);
   right: clamp(24px, 3vw, 48px);
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(18px) saturate(140%);
@@ -42,12 +42,12 @@
 }
 
 @keyframes toastIn {
-  from { transform: translateY(20px); opacity: 0; }
+  from { transform: translateY(-20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes toastOut {
-  to { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(-20px); opacity: 0; }
 }
 
 .toast-text {

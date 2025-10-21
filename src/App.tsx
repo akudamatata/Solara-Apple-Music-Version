@@ -114,7 +114,7 @@ const showNotification = (message: string, type: NotificationType = 'info') => {
     ),
     {
       duration: 2800,
-      position: 'bottom-right',
+      position: 'top-right',
     },
   )
 }
@@ -1937,7 +1937,7 @@ function App() {
       playlistRef.current = baseTracks
       setPlaylist(baseTracks)
 
-      showNotification('已更新热门前 50 首歌曲 🎧', 'success')
+      showNotification('已更新热门前 50 首歌曲', 'success')
     } catch (err) {
       showNotification('获取热门歌曲失败，请稍后再试', 'error')
       console.error(err)
