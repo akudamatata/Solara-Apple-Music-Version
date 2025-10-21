@@ -5,41 +5,55 @@ export interface LyricLineProps {
   text: string
   translation?: string
   isActive: boolean
-  hasEnteredBottomZone: boolean
   lineIndex: number
+  distanceFromActive: number
 }
 
 const baseClasses =
   'lyrics-line relative w-full max-w-2xl text-center transition-all duration-500 ease-out will-change-transform'
 
 const LyricLine = forwardRef<HTMLDivElement, LyricLineProps>(
-  ({ text, translation, isActive, hasEnteredBottomZone, lineIndex }, ref) => {
+  ({ text, translation, isActive, distanceFromActive, lineIndex }, ref) => {
     const controls = useAnimationControls()
 
-    const targetOpacity = isActive || hasEnteredBottomZone ? 1 : 0.4
-    const targetScale = isActive ? 1.04 : 1
+    const getOpacityForDistance = (distance: number) => {
+      if (distance <= 0) return 1
+      if (distance === 1) return 0.96
+      if (distance === 2) return 0.84
+      if (distance === 3) return 0.72
+      if (distance === 4) return 0.6
+      return 0.48
+    }
+
+    const targetOpacity = getOpacityForDistance(distanceFromActive)
+    const targetScale = isActive ? 1.05 : distanceFromActive === 1 ? 1.01 : 1
+
+    const toneClass = isActive
+      ? 'current text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.4)]'
+      : distanceFromActive <= 1
+      ? 'text-white/90'
+      : distanceFromActive === 2
+      ? 'text-white/70'
+      : distanceFromActive <= 4
+      ? 'text-white/60'
+      : 'text-white/45'
 
     useEffect(() => {
       controls.start({
         opacity: targetOpacity,
         scale: targetScale,
         transition: {
-          duration: isActive ? 0.35 : hasEnteredBottomZone ? 0.8 : 0.3,
+          duration: isActive ? 0.3 : 0.45,
           ease: 'easeOut',
         },
       })
-    }, [controls, hasEnteredBottomZone, isActive, targetOpacity, targetScale])
+    }, [controls, isActive, targetOpacity, targetScale])
 
     return (
       <motion.div
         ref={ref}
         data-index={lineIndex}
-        className={[
-          baseClasses,
-          isActive
-            ? 'current text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.4)]'
-            : 'text-white/80',
-        ]
+        className={[baseClasses, toneClass]
           .filter(Boolean)
           .join(' ')}
         initial={{ opacity: targetOpacity, scale: targetScale }}
