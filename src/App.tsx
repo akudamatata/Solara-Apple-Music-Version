@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId, lazy, Suspense, memo } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
-import type { CSSProperties, ChangeEvent, ReactElement } from 'react'
-import { Download, Radar, Trash2, X } from 'lucide-react'
+import type { CSSProperties, ChangeEvent, ReactElement, RefObject } from 'react'
+import { Download, Radar, Trash2, Upload, X } from 'lucide-react'
 import './App.css'
 import SourceDropdown, { type SourceValue } from './SourceDropdown'
 import { Notification } from './components/Notification'
@@ -219,6 +219,9 @@ interface PlaylistViewProps {
   onDownload: (track: PlaylistEntry, quality: AudioQuality) => void
   onRemove: (trackKey: string) => void
   onClear: () => void
+  onExport: () => void
+  onImportChange: (event: ChangeEvent<HTMLInputElement>) => void
+  importInputRef: RefObject<HTMLInputElement | null>
 }
 
 const PlaylistView = memo(
@@ -230,6 +233,9 @@ const PlaylistView = memo(
     onDownload,
     onRemove,
     onClear,
+    onExport,
+    onImportChange,
+    importInputRef,
   }: PlaylistViewProps) => {
     const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null)
     const [scrollTop, setScrollTop] = useState(0)
@@ -422,6 +428,34 @@ const PlaylistView = memo(
         <div className="list-header">
           <span className="list-header__title">播放列表（共 {playlist.length} 首）</span>
           <div className="list-header__actions">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,application/json"
+              style={{ display: 'none' }}
+              onChange={onImportChange}
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+            <button
+              type="button"
+              className="clear-playlist-btn"
+              onClick={() => importInputRef.current?.click()}
+              title="导入播放列表"
+            >
+              <Upload aria-hidden="true" size={18} strokeWidth={1.8} />
+              <span>导入</span>
+            </button>
+            <button
+              type="button"
+              className="clear-playlist-btn"
+              onClick={onExport}
+              title="导出播放列表"
+              disabled={!playlist.length}
+            >
+              <Download aria-hidden="true" size={18} strokeWidth={1.8} />
+              <span>导出</span>
+            </button>
             <button
               type="button"
               className="clear-playlist-btn"
@@ -457,7 +491,10 @@ const PlaylistView = memo(
     prev.onSelect === next.onSelect &&
     prev.onDownload === next.onDownload &&
     prev.onRemove === next.onRemove &&
-    prev.onClear === next.onClear,
+    prev.onClear === next.onClear &&
+    prev.onExport === next.onExport &&
+    prev.onImportChange === next.onImportChange &&
+    prev.importInputRef === next.importInputRef,
 )
 
 const iconShadow = 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25))'
@@ -613,6 +650,7 @@ function App() {
   const repeatModeRef = useRef(repeatMode)
   const lyricsScrollRef = useRef<HTMLDivElement | null>(null)
   const searchBarRef = useRef<HTMLDivElement | null>(null)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     return () => {
@@ -1720,6 +1758,220 @@ function App() {
     showNotification('播放列表已清空', 'success')
   }, [teardownAudio])
 
+  const handleExportPlaylist = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const list = playlistRef.current
+    if (!list.length) {
+      showNotification('当前播放列表为空，无法导出', 'error')
+      return
+    }
+
+    try {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        tracks: list,
+      }
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      const now = new Date()
+      const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
+        now.getDate(),
+      ).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+
+      anchor.href = url
+      anchor.download = `solara-playlist-${timestamp}.json`
+      anchor.style.display = 'none'
+      document.body.appendChild(anchor)
+      anchor.click()
+      document.body.removeChild(anchor)
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
+
+      showNotification('播放列表导出成功', 'success')
+    } catch (error) {
+      console.error('Failed to export playlist', error)
+      showNotification('导出播放列表时出错', 'error')
+    }
+  }, [])
+
+  const handleImportPlaylistChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const { files } = event.target
+      const file = files && files[0]
+      event.target.value = ''
+
+      if (!file) {
+        return
+      }
+
+      try {
+        const text = await file.text()
+        let parsed: unknown
+
+        try {
+          parsed = JSON.parse(text)
+        } catch (error) {
+          console.error('Failed to parse imported playlist', error)
+          showNotification('导入的播放列表文件不是有效的 JSON', 'error')
+          return
+        }
+
+        const rawTracks = Array.isArray(parsed)
+          ? parsed
+          : typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as { tracks?: unknown }).tracks)
+          ? ((parsed as { tracks?: unknown }).tracks as unknown[])
+          : null
+
+        if (!rawTracks || rawTracks.length === 0) {
+          showNotification('导入的播放列表为空或格式无效', 'error')
+          return
+        }
+
+        const seen = new Set<string>()
+        const normalizedTracks: PlaylistEntry[] = []
+
+        for (const item of rawTracks) {
+          if (!item || typeof item !== 'object') {
+            continue
+          }
+
+          const record = item as Record<string, unknown>
+          const id = String(record.id ?? '').trim()
+          const title = String(record.title ?? '').trim()
+          if (!id || !title) {
+            continue
+          }
+
+          const rawArtists = record.artists
+          const artists = Array.isArray(rawArtists)
+            ? rawArtists.map((artist) => String(artist ?? '')).filter(Boolean).join('、')
+            : String(rawArtists ?? '').trim()
+
+          const album = String(record.album ?? '').trim()
+          const source = String(record.source ?? DEFAULT_SOURCE).trim() || DEFAULT_SOURCE
+
+          const normalized: PlaylistEntry = {
+            id,
+            title,
+            artists: artists || '未知艺人',
+            album: album || '未知专辑',
+            source,
+          }
+
+          const artworkUrl = typeof record.artworkUrl === 'string' ? record.artworkUrl.trim() : ''
+          if (artworkUrl) {
+            normalized.artworkUrl = artworkUrl
+          }
+
+          const audioUrl = typeof record.audioUrl === 'string' ? record.audioUrl.trim() : ''
+          if (audioUrl) {
+            normalized.audioUrl = audioUrl
+          }
+
+          const rawDuration = Number(record.duration)
+          if (Number.isFinite(rawDuration) && rawDuration > 0) {
+            normalized.duration = Math.round(rawDuration)
+          }
+
+          const lyricId = typeof record.lyricId === 'string' ? record.lyricId.trim() : ''
+          if (lyricId) {
+            normalized.lyricId = lyricId
+          }
+
+          const picId = typeof record.picId === 'string' ? record.picId.trim() : ''
+          if (picId) {
+            normalized.picId = picId
+          }
+
+          const rawLyrics = record.lyrics
+          if (Array.isArray(rawLyrics)) {
+            const lyrics = rawLyrics
+              .map((line) => {
+                if (!line || typeof line !== 'object') {
+                  return null
+                }
+                const lyricRecord = line as Record<string, unknown>
+                const time = Number(lyricRecord.time)
+                const text = String(lyricRecord.text ?? '').trim()
+                if (!Number.isFinite(time) || !text) {
+                  return null
+                }
+                const normalizedLyric: LyricLine = { time, text }
+                if (typeof lyricRecord.translation === 'string' && lyricRecord.translation.trim()) {
+                  normalizedLyric.translation = lyricRecord.translation.trim()
+                }
+                return normalizedLyric
+              })
+              .filter((line): line is LyricLine => line !== null)
+
+            if (lyrics.length) {
+              normalized.lyrics = lyrics
+            }
+          }
+
+          const key = getTrackKey(normalized)
+          if (seen.has(key)) {
+            continue
+          }
+          seen.add(key)
+          normalizedTracks.push(normalized)
+        }
+
+        if (!normalizedTracks.length) {
+          showNotification('未找到有效的歌曲条目', 'error')
+          return
+        }
+
+        if (
+          typeof window !== 'undefined' &&
+          !window.confirm('导入操作将覆盖当前播放列表并停止播放，是否继续？')
+        ) {
+          return
+        }
+
+        teardownAudio()
+        playlistRef.current = normalizedTracks
+        setPlaylist(normalizedTracks)
+        setCurrentTrack(null)
+        currentTrackRef.current = null
+        setCurrentTrackId(null)
+        activeIndexRef.current = -1
+        setProgress(0)
+        setDuration(0)
+        setActiveLyricIndex(0)
+        setIsPlaying(false)
+        setIsBuffering(false)
+
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(STORAGE_KEYS.currentTrack)
+          window.localStorage.removeItem(STORAGE_KEYS.currentTrackId)
+          window.localStorage.removeItem(STORAGE_KEYS.playProgress)
+        }
+
+        showNotification(`成功导入 ${normalizedTracks.length} 首歌曲`, 'success')
+      } catch (error) {
+        console.error('Failed to import playlist', error)
+        showNotification('导入播放列表时出错', 'error')
+      }
+    },
+    [
+      setActiveLyricIndex,
+      setCurrentTrack,
+      setCurrentTrackId,
+      setDuration,
+      setIsBuffering,
+      setIsPlaying,
+      setPlaylist,
+      setProgress,
+      teardownAudio,
+    ],
+  )
+
   const handleDownloadTrack = useCallback(
     async (track: PlaylistEntry, quality: AudioQuality) => {
       setDownloadQuality(quality)
@@ -2338,6 +2590,9 @@ function App() {
                   onDownload={handleDownloadTrack}
                   onRemove={handleRemoveTrack}
                   onClear={handleClearPlaylist}
+                  onExport={handleExportPlaylist}
+                  onImportChange={handleImportPlaylistChange}
+                  importInputRef={importInputRef}
                 />
               ) : (
                 <div className="lyrics-panel">
